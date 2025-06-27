@@ -1,0 +1,44 @@
+<idea-plugin>
+    <id>com.chenxinzhi.plugins.intellij</id>
+    <name>Tools</name>
+    <vendor>chenxinzhi</vendor>
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.database</depends>
+    <depends>com.intellij.spring.boot</depends>
+    <depends>com.intellij.spring</depends>
+    <applicationListeners>
+    </applicationListeners>
+
+    <dependencies>
+        <module name="intellij.libraries.skiko"></module>
+        <module name="intellij.libraries.compose.foundation.desktop"></module>
+        <module name="intellij.platform.jewel.foundation"></module>
+        <module name="intellij.platform.jewel.ui"></module>
+        <module name="intellij.platform.jewel.ideLafBridge"></module>
+
+    </dependencies>
+
+
+    <!--    <extensions defaultExtensionNs="com.intellij">-->
+    <!--        <toolWindow factoryClass="toolWindow.com.chenxinzhi.plugins.intellij.MyToolWindowFactory" id="MyToolWindow"/>-->
+    <!--    </extensions>-->
+
+    <actions resource-bundle="messages.LanguageBundle">
+
+        <action id="CaseSwitcherAction"
+                class="com.chenxinzhi.plugins.intellij.action.CaseSwitcherAction">
+            <keyboard-shortcut keymap="$default" first-keystroke="shift control W"/>
+        </action>
+        <action id="CxzCreateClassAction"
+                class="com.chenxinzhi.plugins.intellij.action.CreateClassAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+    </actions>
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Tools" anchor="bottom" secondary="false" canCloseContents="false"
+                    factoryClass="com.chenxinzhi.plugins.intellij.ToolWindowFactory"/>
+        <notificationGroup id="CxzGroup"
+                           displayType="BALLOON"
+                           bundle="messages.LanguageBundle" key="notification.group.custom.notification.group"/>
+    </extensions>
+</idea-plugin>
