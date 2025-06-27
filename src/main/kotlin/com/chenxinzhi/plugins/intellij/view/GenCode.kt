@@ -560,7 +560,6 @@ fun GenCode(project: Project) {
                 buE = false
                 project.compileAndInvokeSingleModule(devModule?.name ?: "", successCallback = {
                     delay(1000)
-                    buE = true
                     allModule?.let {
                         for (module in it) {
                             val path = Paths.get(module.moduleFilePath).parent.toString()
@@ -573,8 +572,11 @@ fun GenCode(project: Project) {
                         }
                     }
                     msg = ""
+                    buE = true
                     project.notifySuccess(LanguageBundle.messagePointer("tool.gen.finish").get())
                 }, failCallback = {
+                    msg = ""
+                    buE = true
                     project.notifyError(LanguageBundle.messagePointer("tool.gen.error").get())
                 }
 
