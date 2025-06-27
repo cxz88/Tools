@@ -43,6 +43,7 @@ fun Project.compileAndInvokeSingleModule(
     setObj: (Class<*>) -> Any?
 ) {
     val module = ModuleManager.getInstance(this).findModuleByName(moduleName) ?: run {
+        failCallback()
         return
     }
 
