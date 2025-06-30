@@ -6,6 +6,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.ui.content.ContentFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.jetbrains.jewel.bridge.addComposeTab
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -19,6 +20,9 @@ class ToolWindowFactory : ToolWindowFactory, DumbAware {
         toolWindow.addComposeTab(LanguageBundle.messagePointer("tool.gen.name").get()) {
             GenCode(project)
         }
+        val panel = InfluxDBPanel(project)
+        val content = ContentFactory.getInstance().createContent(panel, "时序数据库工具", false)
+        toolWindow.contentManager.addContent(content)
 
     }
 
