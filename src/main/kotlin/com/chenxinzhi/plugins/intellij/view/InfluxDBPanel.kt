@@ -1,6 +1,8 @@
 package com.chenxinzhi.plugins.intellij.view
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
+import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
+import com.chenxinzhi.plugins.intellij.utils.onChange
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.sql.psi.SqlLanguage
@@ -47,13 +49,30 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
         setFillsViewportHeight(true) // ✅ 可选：让表格撑满 viewport
     }
 
-    private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total",0).get())
-    private val pageInfoLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.pageInfo",1,1).get())
+    private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total", 0).get())
+    private val pageInfoLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.pageInfo", 1, 1).get())
 
     private var currentPage = 0
     private val pageSize = 50
+    private fun saveSettings() {
+        val state = InfluxDbProjectSettingsService.getInstance(project).state
+        state.influxUrl = influxUrlField.text
+        state.dbName = dbNameField.text
+        state.user = userField.text
+        state.password = String(passwordField.password)
+    }
 
     init {
+        val state = InfluxDbProjectSettingsService.getInstance(project).state
+        influxUrlField.text = state.influxUrl
+        dbNameField.text = state.dbName
+        userField.text = state.user
+        passwordField.text = state.password
+
+        influxUrlField.onChange { saveSettings() }
+        dbNameField.onChange { saveSettings() }
+        userField.onChange { saveSettings() }
+        passwordField.onChange { saveSettings() }
         val runButton = JButton(LanguageBundle.messagePointer("tool.influxDb.query").get()).apply {
             preferredSize = Dimension(90, 28)
             margin = JBUI.insets(2, 8)
@@ -80,9 +99,10 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
                     sql
                 )
 
-                totalCountLabel.text = LanguageBundle.messagePointer("tool.influxDb.total",totalCount).get()
+                totalCountLabel.text = LanguageBundle.messagePointer("tool.influxDb.total", totalCount).get()
                 val totalPages = if (totalCount == 0) 1 else (totalCount + pageSize - 1) / pageSize
-                pageInfoLabel.text = LanguageBundle.messagePointer("tool.influxDb.pageInfo",currentPage + 1,totalPages).get()
+                pageInfoLabel.text =
+                    LanguageBundle.messagePointer("tool.influxDb.pageInfo", currentPage + 1, totalPages).get()
             }
         }
 

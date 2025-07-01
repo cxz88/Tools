@@ -41,4 +41,5 @@
                            displayType="BALLOON"
                            bundle="messages.LanguageBundle" key="notification.group.custom.notification.group"/>
     </extensions>
+
 </idea-plugin>

@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,52 +31,53 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import java.nio.file.Paths
+import kotlin.math.max
 
 /**
  * @author chenxinzhi
  * @date 2025-06-27 09:21:25
  */
+var dataSources: List<LocalDataSource> by mutableStateOf(listOf())
+var devModules: List<Module> by mutableStateOf(listOf())
+var dataBases: List<DasNamespace> by mutableStateOf(listOf())
+var nowDataSource: LocalDataSource? by mutableStateOf(null)
+var nowDataBase: DasNamespace? by mutableStateOf(null)
+var nowServicePath: String? by mutableStateOf(null)
+var nowServiceApiPath: String? by mutableStateOf(null)
+var tables: List<DasObject> by mutableStateOf(listOf())
+var nowTable: DasObject? by mutableStateOf(null)
+val menuState = TextFieldState("")
+val serviceNameState = TextFieldState("")
+val tablePreState = TextFieldState("")
+var baseMode by
+mutableStateOf(false)
+
+var tenantMode by
+mutableStateOf(false)
+
+var useElementUI by
+mutableStateOf(false)
+
+val webPreState = TextFieldState("")
+val code = TextFieldState("")
+val fucCode = TextFieldState("")
+val packageName = TextFieldState("")
+val frontDir = TextFieldState("")
+var wrapMode by
+mutableStateOf(false)
+
+var devModule: Module? by
+mutableStateOf(null)
+
+var allModule: List<Module>? by
+mutableStateOf(null)
+
 @Composable
 fun GenCode(project: Project) {
     var buE by remember { mutableStateOf(true) }
     var msg by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
-        var dataSources: List<LocalDataSource> by remember { mutableStateOf(listOf()) }
-        var devModules: List<Module> by remember { mutableStateOf(listOf()) }
-        var dataBases: List<DasNamespace> by remember { mutableStateOf(listOf()) }
-        var nowDataSource: LocalDataSource? by remember { mutableStateOf(null) }
-        var nowDataBase: DasNamespace? by remember { mutableStateOf(null) }
-        var nowServicePath: String? by remember { mutableStateOf(null) }
-        var nowServiceApiPath: String? by remember { mutableStateOf(null) }
-        var tables: List<DasObject> by remember { mutableStateOf(listOf()) }
-        var nowTable: DasObject? by remember { mutableStateOf(null) }
-        val menuState = rememberTextFieldState("")
-        val serviceNameState = rememberTextFieldState("")
-        val tablePreState = rememberTextFieldState("")
-        var baseMode by remember {
-            mutableStateOf(false)
-        }
-        var tenantMode by remember {
-            mutableStateOf(false)
-        }
-        var useElementUI by remember {
-            mutableStateOf(false)
-        }
-        val webPreState = rememberTextFieldState("")
-        val code = rememberTextFieldState("")
-        val fucCode = rememberTextFieldState("")
-        val packageName = rememberTextFieldState("")
-        val frontDir = rememberTextFieldState("")
-        var wrapMode by remember {
-            mutableStateOf(false)
-        }
-        var devModule: Module? by remember {
-            mutableStateOf(null)
-        }
 
-        var allModule: List<Module>? by remember {
-            mutableStateOf(null)
-        }
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -111,7 +112,11 @@ fun GenCode(project: Project) {
                 }.let {
                     if (it.isNotEmpty()) {
                         isLoad = true
-                        devModule = devModules[selectedIndex]
+                        devModule = devModules[devModule?.let { module ->
+                            devModules.indexOfFirst { m -> m.name == module.name }.apply {
+                                selectedIndex = max(this, 0)
+                            }
+                        } ?: 0]
                     }
                     it.ifEmpty {
                         listOf(
@@ -159,7 +164,11 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowDataSource = dataSources[selectedIndex]
+                            nowDataSource = dataSources[nowDataSource?.let { lds ->
+                                dataSources.indexOfFirst { ds -> ds.name == lds.name }.apply {
+                                    selectedIndex = max(this, 0)
+                                }
+                            } ?: 0]
                         }
                         it.ifEmpty {
                             nowDataSource = null
@@ -208,7 +217,11 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowServicePath = it[selectedIndex].other
+                            nowServicePath = it[nowServicePath?.let { module ->
+                                it.indexOfFirst { m -> m.other == module }.apply {
+                                    selectedIndex = max(this, 0)
+                                }
+                            } ?: 0].other
 
                         }
                         it.ifEmpty {
@@ -257,7 +270,11 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowServiceApiPath = it[selectedIndex].other
+                            nowServiceApiPath = it[nowServiceApiPath?.let { module ->
+                                it.indexOfFirst { m -> m.other == module }.apply {
+                                    selectedIndex = max(this, 0)
+                                }
+                            } ?: 0].other
 
                         }
                         it.ifEmpty {
@@ -315,7 +332,11 @@ fun GenCode(project: Project) {
                         }.let {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
-                                    nowDataBase = dataBases[selectedIndex]
+                                    nowDataBase = dataBases[nowDataBase?.let { lds ->
+                                        dataBases.indexOfFirst { ds -> ds.name == lds.name }.apply {
+                                            selectedIndex = max(this, 0)
+                                        }
+                                    } ?: 0]
 
                                 }
                             }
@@ -365,7 +386,11 @@ fun GenCode(project: Project) {
                         }.let {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
-                                    nowTable = tables[selectedIndex]
+                                    nowTable = tables[nowTable?.let { lds ->
+                                        tables.indexOfFirst { ds -> ds.name == lds.name }.apply {
+                                            selectedIndex = max(this, 0)
+                                        }
+                                    } ?: 0]
 
                                 }
                             }
@@ -435,7 +460,7 @@ fun GenCode(project: Project) {
 
                 Text(LanguageBundle.messagePointer("tool.gen.text.basicBusiness").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue {
+                CheckListTrue(baseMode) {
                     baseMode = it
                 }
 
@@ -445,7 +470,7 @@ fun GenCode(project: Project) {
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.tenantModel").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue {
+                CheckListTrue(tenantMode) {
                     tenantMode = it
                 }
 
@@ -455,7 +480,7 @@ fun GenCode(project: Project) {
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.useElementUI").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue {
+                CheckListTrue(useElementUI) {
                     useElementUI = it
                 }
 
@@ -509,7 +534,7 @@ fun GenCode(project: Project) {
 
                 Text(LanguageBundle.messagePointer("tool.gen.text.wrapperMode").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue {
+                CheckListTrue(wrapMode) {
                     wrapMode = it
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -622,7 +647,7 @@ fun GenCode(project: Project) {
     if (!buE) {
         Box(
             modifier = Modifier.fillMaxSize().background(color = Color.Black.copy(alpha = 0.3f)).clickable(
-            indication = null, interactionSource = remember { MutableInteractionSource() }) {},
+                indication = null, interactionSource = remember { MutableInteractionSource() }) {},
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -664,10 +689,11 @@ private fun ComboList(
 
 @Composable
 private fun CheckListTrue(
+    initValue: Boolean,
     callback: (Boolean) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        var index by remember { mutableIntStateOf(0) }
+        var index by remember { mutableIntStateOf(if (initValue) 1 else 0) }
         LaunchedEffect(index) {
             callback(index == 1)
         }

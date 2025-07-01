@@ -30,6 +30,10 @@ import org.jetbrains.jps.model.java.JavaResourceRootType
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
+import javax.swing.JPasswordField
+import javax.swing.JTextField
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
 
 fun Project.compileAndInvokeSingleModule(
@@ -143,4 +147,19 @@ fun Project.getAllDataSources(): List<LocalDataSource> {
 
 fun Project.getAllModules(): List<Module> {
     return ModuleManager.getInstance(this).modules.toList()
+}
+fun JTextField.onChange(action: () -> Unit) {
+    document.addDocumentListener(object : DocumentListener {
+        override fun insertUpdate(e: DocumentEvent?) = action()
+        override fun removeUpdate(e: DocumentEvent?) = action()
+        override fun changedUpdate(e: DocumentEvent?) = action()
+    })
+}
+
+fun JPasswordField.onChange(action: () -> Unit) {
+    document.addDocumentListener(object : DocumentListener {
+        override fun insertUpdate(e: DocumentEvent?) = action()
+        override fun removeUpdate(e: DocumentEvent?) = action()
+        override fun changedUpdate(e: DocumentEvent?) = action()
+    })
 }
