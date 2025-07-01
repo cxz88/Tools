@@ -6,6 +6,7 @@
     <depends>com.intellij.database</depends>
     <depends>com.intellij.spring.boot</depends>
     <depends>com.intellij.spring</depends>
+    <depends>org.intellij.groovy</depends>
     <applicationListeners>
     </applicationListeners>
 
@@ -40,6 +41,11 @@
         <notificationGroup id="CxzGroup"
                            displayType="BALLOON"
                            bundle="messages.LanguageBundle" key="notification.group.custom.notification.group"/>
+        <applicationConfigurable 
+                parentId="tools"
+                instance="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
+                id="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
+                displayName="Naming Style Settings"/>
     </extensions>
 
 </idea-plugin>
