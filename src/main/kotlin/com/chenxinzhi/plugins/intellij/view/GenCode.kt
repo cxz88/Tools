@@ -113,8 +113,10 @@ fun GenCode(project: Project) {
                     if (it.isNotEmpty()) {
                         isLoad = true
                         devModule = devModules[devModule?.let { module ->
-                            devModules.indexOfFirst { m -> m.name == module.name }.apply {
-                                selectedIndex = max(this, 0)
+                            devModules.indexOfFirst { m -> m.name == module.name }.let { i ->
+                                max(i, 0).apply {
+                                    selectedIndex = this
+                                }
                             }
                         } ?: 0]
                     }
@@ -165,8 +167,10 @@ fun GenCode(project: Project) {
                         if (it.isNotEmpty()) {
                             isLoad = true
                             nowDataSource = dataSources[nowDataSource?.let { lds ->
-                                dataSources.indexOfFirst { ds -> ds.name == lds.name }.apply {
-                                    selectedIndex = max(this, 0)
+                                dataSources.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
+                                    max(i, 0).apply {
+                                        selectedIndex = this
+                                    }
                                 }
                             } ?: 0]
                         }
@@ -218,8 +222,10 @@ fun GenCode(project: Project) {
                         if (it.isNotEmpty()) {
                             isLoad = true
                             nowServicePath = it[nowServicePath?.let { module ->
-                                it.indexOfFirst { m -> m.other == module }.apply {
-                                    selectedIndex = max(this, 0)
+                                it.indexOfFirst { m -> m.other == module }.let { i ->
+                                    max(i, 0).apply {
+                                        selectedIndex = this
+                                    }
                                 }
                             } ?: 0].other
 
@@ -271,8 +277,10 @@ fun GenCode(project: Project) {
                         if (it.isNotEmpty()) {
                             isLoad = true
                             nowServiceApiPath = it[nowServiceApiPath?.let { module ->
-                                it.indexOfFirst { m -> m.other == module }.apply {
-                                    selectedIndex = max(this, 0)
+                                it.indexOfFirst { m -> m.other == module }.let { i ->
+                                    max(i, 0).apply {
+                                        selectedIndex = this
+                                    }
                                 }
                             } ?: 0].other
 
@@ -333,8 +341,10 @@ fun GenCode(project: Project) {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
                                     nowDataBase = dataBases[nowDataBase?.let { lds ->
-                                        dataBases.indexOfFirst { ds -> ds.name == lds.name }.apply {
-                                            selectedIndex = max(this, 0)
+                                        dataBases.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
+                                            max(i, 0).apply {
+                                                selectedIndex = this
+                                            }
                                         }
                                     } ?: 0]
 
@@ -387,8 +397,10 @@ fun GenCode(project: Project) {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
                                     nowTable = tables[nowTable?.let { lds ->
-                                        tables.indexOfFirst { ds -> ds.name == lds.name }.apply {
-                                            selectedIndex = max(this, 0)
+                                        tables.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
+                                            max(i, 0).apply {
+                                                selectedIndex = this
+                                            }
                                         }
                                     } ?: 0]
 
