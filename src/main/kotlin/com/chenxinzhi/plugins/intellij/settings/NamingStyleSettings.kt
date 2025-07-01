@@ -12,15 +12,31 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 @Service(Service.Level.APP)
 @State(
     name = "com.chenxinzhi.plugins.intellij.settings.NamingStyleSettings",
-    storages = [Storage("NamingStyleSettings.xml")]
+    storages = [Storage("naming-style-settings.xml")]
 )
 class NamingStyleSettings : PersistentStateComponent<NamingStyleSettings> {
+    // 无参构造函数，用于序列化
+    constructor()
+
+    // 用于深度克隆设置的方法
+    fun createDeepCopy(): NamingStyleSettings {
+        val copy = NamingStyleSettings()
+        copy.namingStyles = this.namingStyles.map { style ->
+            NamingStyle(
+                style.name,
+                style.order,
+                style.useScript,
+                style.scriptContent
+            )
+        }.toMutableList()
+        return copy
+    }
 
     // 存储命名风格及其顺序
     var namingStyles: MutableList<NamingStyle> = mutableListOf(
         NamingStyle(
-            "camelCase", 0, "toCamelCase", true,
-            """// 驼峰式命名 (camelCase)
+            "camelCase", 0, true,
+            """// camelCase
 import java.util.*
 
 def parts = input.split('_')
@@ -35,33 +51,33 @@ parts.eachWithIndex { part, index ->
 return result.toString()"""
         ),
         NamingStyle(
-            "snake_case", 1, "toSnakeCase", true,
-            """// 蛇形命名 (snake_case)
-    import java.util.*
+            "snake_case", 1, true,
+            """// snake_case
+import java.util.*
 
-    def parts = input.split("_")
-    def result = parts.collect { it.toLowerCase() }.join("_")
-    return result"""
+def parts = input.split("_")
+def result = parts.collect { it.toLowerCase() }.join("_")
+return result"""
         ),
         NamingStyle(
-            "UPPER_SNAKE_CASE", 2, "toUpperSnakeCase", true,
-            """// 大写蛇形命名 (UPPER_SNAKE_CASE)
-    import java.util.*
+            "UPPER_SNAKE_CASE", 2, true,
+            """// UPPER_SNAKE_CASE
+import java.util.*
 
-    def parts = input.split("_")
-    def result = parts.collect { it.toUpperCase() }.join("_")
-    return result"""
+def parts = input.split("_")
+def result = parts.collect { it.toUpperCase() }.join("_")
+return result"""
         ),
         NamingStyle(
-            "PascalCase", 3, "toPascalCase", true,
-            """// 帕斯卡命名 (PascalCase)
-    import java.util.*
+            "PascalCase", 3, true,
+            """// PascalCase
+import java.util.*
 
-    def parts = input.split("_")
-    def result = parts.collect { part -> 
+def parts = input.split("_")
+def result = parts.collect { part -> 
     part.substring(0, 1).toUpperCase() + part.substring(1).toLowerCase()
-    }.join('')
-    return result"""
+}.join('')
+return result"""
         )
     )
 
@@ -73,7 +89,10 @@ return result.toString()"""
 
     companion object {
         @JvmStatic
-        fun getInstance(): NamingStyleSettings = service()
+        fun getInstance(): NamingStyleSettings {
+            return com.intellij.openapi.application.ApplicationManager.getApplication()
+                .getService(NamingStyleSettings::class.java)
+        }
     }
 
     /**
@@ -100,16 +119,6 @@ return result.toString()"""
     }
 
     /**
-     * 添加新的命名风格
-     */
-    fun addNamingStyle(name: String, methodName: String, useScript: Boolean, scriptContent: String = ""): Boolean {
-        // 获取最大的order值并加1
-        val maxOrder = namingStyles.maxOfOrNull { it.order } ?: -1
-        val style = NamingStyle(name, maxOrder + 1, methodName, useScript, scriptContent)
-        return namingStyles.add(style)
-    }
-
-    /**
      * 删除命名风格，但至少保留一个
      */
     fun removeNamingStyle(index: Int): Boolean {
@@ -122,34 +131,4 @@ return result.toString()"""
         return true
     }
 
-    /**
-     * 更新命名风格
-     */
-    fun updateNamingStyle(
-        index: Int,
-        name: String,
-        methodName: String,
-        useScript: Boolean,
-        scriptContent: String = ""
-    ): Boolean {
-        if (index < 0 || index >= namingStyles.size) return false
-
-        val style = namingStyles[index]
-        style.name = name
-        style.methodName = methodName
-        style.useScript = useScript
-        style.scriptContent = scriptContent
-        return true
-    }
 }
-
-/**
- * 命名风格数据类
- */
-data class NamingStyle(
-    var name: String, // 显示名称
-    var order: Int,   // 顺序
-    var methodName: String, // 对应的方法名
-    var useScript: Boolean, // 是否使用脚本
-    var scriptContent: String = "" // 脚本内容
-)

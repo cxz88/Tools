@@ -1,6 +1,5 @@
 package com.chenxinzhi.plugins.intellij.action
 
-import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.script.GroovyScriptEvaluator
 import com.chenxinzhi.plugins.intellij.settings.NamingStyleSettings
 import com.intellij.openapi.actionSystem.AnAction
@@ -59,27 +58,19 @@ class CaseSwitcherAction : AnAction() {
      * 执行命名风格转换
      */
     private fun executeNamingStyle(style: com.chenxinzhi.plugins.intellij.settings.NamingStyle, input: String): String {
-        // 优先使用脚本（总是应该使用脚本）
+        // 使用脚本执行转换
         if (style.scriptContent.isNotBlank()) {
-            try {
-                return runBlocking {
+            return try {
+                runBlocking {
                     scriptEvaluator.evaluate(style.scriptContent, mapOf("input" to input)) ?: input
                 }
-            } catch (e: Exception) {
-                com.intellij.openapi.diagnostic.Logger.getInstance(CaseSwitcherAction::class.java)
-                    .error("脚本执行错误: ${e.message}", e)
-                return input
+            } catch (_: Exception) {
+                input
             }
         }
 
-        // 备用方法（如果脚本为空）
-        return when (style.methodName) {
-            "toCamelCase" -> toCamelCase(input)
-            "toSnakeCase" -> toSnakeCase(input)
-            "toUpperSnakeCase" -> toUpperSnakeCase(input)
-            "toPascalCase" -> toPascalCase(input)
-            else -> input
-        }
+        // 如果没有脚本内容，返回原始输入
+        return input
     }
 
     fun normalizeToWords(input: String): String {
@@ -87,18 +78,4 @@ class CaseSwitcherAction : AnAction() {
         return snake.lowercase()
     }
 
-    // 转为 camelCase
-    fun toCamelCase(input: String): String = input.split("_").mapIndexed { i, part ->
-        if (i == 0) part else part.replaceFirstChar { it.uppercase() }
-    }.joinToString("")
-
-    // 转为 snake_case
-    fun toSnakeCase(input: String): String = input.split("_").joinToString("_") { it.lowercase() }
-
-    // 转为 UPPER_SNAKE_CASE
-    fun toUpperSnakeCase(input: String): String = input.split("_").joinToString("_") { it.uppercase() }
-
-    // 转为 PascalCase
-    fun toPascalCase(input: String): String =
-        input.split("_").joinToString("") { it.replaceFirstChar { c -> c.uppercase() } }
 }
