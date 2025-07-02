@@ -2,6 +2,8 @@ package com.chenxinzhi.plugins.intellij.settings
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.intellij.openapi.options.Configurable
+import com.intellij.ui.EditorTextField
+import com.intellij.ui.LanguageTextField
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
@@ -11,6 +13,7 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.JBUI
+import org.jetbrains.plugins.groovy.GroovyLanguage
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -64,7 +67,7 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
     }
 
     // 编辑器相关组件
-    private lateinit var editor: com.intellij.openapi.editor.Editor
+    private lateinit var editor: EditorTextField
     private lateinit var editorDocument: com.intellij.openapi.editor.Document
     private var currentProject: com.intellij.openapi.project.Project? = null
 
@@ -155,10 +158,7 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
         }
         // ${LanguageBundle.message("script.comment.return")}
         return result"""
-        editorDocument = editorFactory.createDocument(scriptTemplate)
 
-        // 监听文档变化
-        editorDocument.addDocumentListener(scriptDocumentListener)
 
         // 获取当前项目 - 用于编辑器创建
         currentProject = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.firstOrNull()
@@ -166,27 +166,27 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
 
         // 创建简单的编辑器
         try {
-            // 创建具有语法高亮的编辑器
-            val groovyFileType =
-                com.intellij.openapi.fileTypes.FileTypeRegistry.getInstance().findFileTypeByName("Groovy")
-                    ?: com.intellij.openapi.fileTypes.PlainTextFileType.INSTANCE
 
-            editor = editorFactory.createEditor(editorDocument, currentProject, groovyFileType, false)
-
-            // 基本设置
-            val settings = editor.settings
-            settings.isLineNumbersShown = true
-            settings.isLineMarkerAreaShown = true
-            settings.isFoldingOutlineShown = false  // 禁用代码折叠，避免高度变化
-            settings.isSmartHome = true
-            settings.additionalLinesCount = 0      // 减少额外的行数
-            settings.additionalColumnsCount = 0    // 减少额外的列数
-            settings.isUseSoftWraps = false        // 禁用软换行
-
+            editor = LanguageTextField(
+                GroovyLanguage,
+                if (currentProject?.isDefault == true) null else currentProject,
+                scriptTemplate  // 初始文本
+                ,false
+            )
+            val settings = editor.editor?.settings
+            settings?.isLineNumbersShown = true
+            settings?.isLineMarkerAreaShown = true
+            settings?.isFoldingOutlineShown = false  // 禁用代码折叠，避免高度变化
+            settings?.isSmartHome = true
+            settings?.additionalLinesCount = 0      // 减少额外的行数
+            settings?.additionalColumnsCount = 0    // 减少额外的列数
+            settings?.isUseSoftWraps = false        // 禁用软换行
             // 禁用不必要的功能，减少界面元素
-            settings.isShowIntentionBulb = false
-            settings.isAutoCodeFoldingEnabled = false
-
+            settings?.isShowIntentionBulb = false
+            settings?.isAutoCodeFoldingEnabled = false
+            // 监听文档变化
+            editorDocument = editor.document
+            editorDocument.addDocumentListener(scriptDocumentListener)
             // 创建固定高度的编辑器容器
             val editorContainer = JPanel(BorderLayout())
             editorContainer.preferredSize = Dimension(800, 300)  // 设置固定的编辑器高度
@@ -194,7 +194,8 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
 
             // 添加编辑器容器到脚本面板
             scriptPanel.add(editorContainer, BorderLayout.CENTER)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             // 创建一个简单的文本区域
             val simpleTextArea = JTextArea(editorDocument.text)
             simpleTextArea.font = JBUI.Fonts.create("Monospaced", 12)
@@ -335,7 +336,7 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
 
             // 重置编辑器滚动位置
             if (::editor.isInitialized) {
-                editor.scrollingModel.scrollVertically(0)
+                editor.editor?.scrollingModel?.scrollVertically(0)
             }
 
             scriptTextArea.isEnabled = true
@@ -492,7 +493,6 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
     }
 
 
-
     override fun isModified(): Boolean = modified
 
     override fun apply() {
@@ -592,7 +592,7 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
     override fun dispose() {
         // 释放所有编辑器资源
         if (::editor.isInitialized) {
-            com.intellij.openapi.editor.EditorFactory.getInstance().releaseEditor(editor)
+            editor.editor?.let { com.intellij.openapi.editor.EditorFactory.getInstance().releaseEditor(it) }
         }
     }
 
