@@ -61,6 +61,9 @@
         <colorSettingsPage implementation="com.chenxinzhi.plugins.intellij.influxdb.language.highlighter.InfluxQLColorSettingsPage"/>
         <lang.braceMatcher language="InfluxQL"
                            implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLBraceMatcher"/>
+        <!-- ↓↓↓ 添加下面这个新的扩展 ↓↓↓ -->
+        <lang.commenter language="InfluxQL"
+                        implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.commenter.InfluxQLCommenter"/>
     </extensions>
 
 </idea-plugin>

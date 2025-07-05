@@ -107,6 +107,8 @@ BOOLEAN_LITERAL=("true"|"false")
   ","                        { return COMMA; }
   "."                        { return DOT; }
   ";"                        { return SEMICOLON; }
+  "\""                        { return DOUBLE_QUOTES; }
+  "\'"                        { return SINGLE_QUOTES; }
 
   /* Literals */
   {BOOLEAN_LITERAL}          { return BOOLEAN_LITERAL; }

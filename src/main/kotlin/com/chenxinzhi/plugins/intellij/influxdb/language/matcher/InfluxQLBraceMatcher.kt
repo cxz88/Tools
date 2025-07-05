@@ -10,9 +10,8 @@ class InfluxQLBraceMatcher : PairedBraceMatcher {
 
     override fun getPairs(): Array<BracePair> = PAIRS
 
-    // 这个方法可以保持原样，因为它对于括号配对依然有效
     override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?): Boolean {
-        return true // 括号几乎可以在任何地方配对
+        return true
     }
 
     override fun getCodeConstructStart(file: PsiFile, openingBraceOffset: Int): Int {
@@ -20,8 +19,9 @@ class InfluxQLBraceMatcher : PairedBraceMatcher {
     }
 }
 
-// 定义配对，这次使用正确的 IElementType
 private val PAIRS = arrayOf(
     // 第三个参数 isStructural 为 true，意味着这对括号会影响代码结构（例如代码折叠）
+    BracePair(InfluxQLTypes.DOUBLE_QUOTES, InfluxQLTypes.DOUBLE_QUOTES, true),
+    BracePair(InfluxQLTypes.SINGLE_QUOTES, InfluxQLTypes.SINGLE_QUOTES, true),
     BracePair(InfluxQLTypes.LPAREN, InfluxQLTypes.RPAREN, true)
 )

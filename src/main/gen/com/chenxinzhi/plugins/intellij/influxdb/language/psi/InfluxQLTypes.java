@@ -48,6 +48,7 @@ public interface InfluxQLTypes {
   IElementType DISTINCT = new InfluxQLTokenType("DISTINCT");
   IElementType DIV = new InfluxQLTokenType("DIV");
   IElementType DOT = new InfluxQLTokenType("DOT");
+  IElementType DOUBLE_QUOTES = new InfluxQLTokenType("\"");
   IElementType DROP = new InfluxQLTokenType("DROP");
   IElementType DURATION_LITERAL = new InfluxQLTokenType("DURATION_LITERAL");
   IElementType END_STMT = new InfluxQLTokenType("END_STMT");
@@ -90,6 +91,7 @@ public interface InfluxQLTypes {
   IElementType SEMICOLON = new InfluxQLTokenType("SEMICOLON");
   IElementType SERIES = new InfluxQLTokenType("SERIES");
   IElementType SHOW = new InfluxQLTokenType("SHOW");
+  IElementType SINGLE_QUOTES = new InfluxQLTokenType("'");
   IElementType SLIMIT = new InfluxQLTokenType("SLIMIT");
   IElementType SOFFSET = new InfluxQLTokenType("SOFFSET");
   IElementType STRING_LITERAL = new InfluxQLTokenType("STRING_LITERAL");
