@@ -46,6 +46,21 @@
                 instance="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
                 id="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
                 displayName="Naming Style Settings"/>
+
+        <fileType name="InfluxQL File" implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLFileType"
+                  fieldName="INSTANCE" language="InfluxQL" extensions="influxql"/>
+
+        <lang.parserDefinition language="InfluxQL"
+                               implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="InfluxQL"
+                                       implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.highlighter.InfluxQLSyntaxHighlighterFactory"/>
+
+        <completion.contributor language="InfluxQL"
+                                implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.completion.InfluxQLCompletionContributor"/>
+
+        <colorSettingsPage implementation="com.chenxinzhi.plugins.intellij.influxdb.language.highlighter.InfluxQLColorSettingsPage"/>
+        <lang.braceMatcher language="InfluxQL"
+                           implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLBraceMatcher"/>
     </extensions>
 
 </idea-plugin>

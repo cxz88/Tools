@@ -9,6 +9,13 @@ plugins {
     alias(libs.plugins.changelog) // Gradle Changelog Plugin
     alias(libs.plugins.composeCompiler) // Gradle Compose Compiler Plugin
 }
+sourceSets {
+    main {
+        // 将 "gen" 目录添加到 main 源集的 java 源代码目录列表中
+        // Gradle 会自动处理其中的 .java 文件
+        java.srcDir("src/main/gen")
+    }
+}
 
 group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()

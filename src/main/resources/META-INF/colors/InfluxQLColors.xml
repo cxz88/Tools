@@ -1,0 +1,24 @@
+<options>
+    <option name="INFLUXQL_KEYWORD">
+        <value>
+            <option name="FONT_TYPE" value="1"/>
+            <option name="FOREGROUND" value="000080"/>
+        </value>
+    </option>
+    <option name="INFLUXQL_STRING">
+        <value>
+            <option name="FOREGROUND" value="008000"/>
+        </value>
+    </option>
+    <option name="INFLUXQL_NUMBER">
+        <value>
+            <option name="FOREGROUND" value="0000FF"/>
+        </value>
+    </option>
+    <option name="INFLUXQL_COMMENT">
+        <value>
+            <option name="FOREGROUND" value="808080"/>
+            <option name="FONT_TYPE" value="2"/>
+        </value>
+    </option>
+</options>

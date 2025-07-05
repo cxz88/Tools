@@ -1,0 +1,72 @@
+{
+  parserClass="com.chenxinzhi.plugins.intellij.influxdb.language.parser.InfluxQLParser"
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+  psiClassPrefix="InfluxQL"
+  psiImplClassSuffix="Impl"
+  psiPackage="com.chenxinzhi.plugins.intellij.influxdb.language.psi"
+  psiImplPackage="com.chenxinzhi.plugins.intellij.influxdb.language.psi.impl"
+  elementTypeHolderClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTypes"
+  elementTypeClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLElementType"
+  tokenTypeClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTokenType"
+  psiImplUtilClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLPsiImplUtil"
+  tokens = [
+    COMMENT = 'comment'
+    // 如果以后还有类似的，比如块注释，也可以加在这里
+    // BLOCK_COMMENT = 'block_comment'
+  ]
+}
+
+
+influxQLFile ::= statement*
+
+private statement ::= (select_statement | show_statement | other_statement) (';')? {
+    pin=1 // Pin the first element of a statement
+    recoverWhile=statement_recovery
+}
+private statement_recovery ::= !('SELECT' | 'SHOW' | 'CREATE' | 'DROP' | 'DELETE' | 'GRANT' | 'REVOKE')
+
+// 主要的 SELECT 语句
+select_statement ::= SELECT field_list FROM from_clause (WHERE where_clause)? (GROUP BY group_by_clause)? (ORDER BY order_by_clause)? (LIMIT limit_clause)? (SLIMIT slimit_clause)? (OFFSET offset_clause)? (SOFFSET soffset_clause)?
+
+field_list ::= (MUL | field_clause (',' field_clause)*)
+field_clause ::= expression ('as' alias)?
+alias ::= identifierMy
+
+from_clause ::= measurement (',' measurement)*
+// 我们给 measurement 定义一个 external 方法，用于获取其名称
+measurement ::= identifierMy { methods = [getName] }
+
+where_clause ::= expression
+
+group_by_clause ::= (time_clause | tag_clause) (',' (time_clause | tag_clause))*
+time_clause ::= 'time' '(' DURATION_LITERAL ')'
+tag_clause ::= identifierMy
+
+order_by_clause ::= 'time' (ASC | DESC)?
+
+limit_clause ::= INTEGER_LITERAL
+slimit_clause ::= INTEGER_LITERAL
+offset_clause ::= INTEGER_LITERAL
+soffset_clause ::= INTEGER_LITERAL
+
+// SHOW 语句
+show_statement ::= SHOW (DATABASES | MEASUREMENTS (ON identifierMy)? | SERIES (FROM measurement)? | FIELD KEYS (FROM measurement)? | TAG KEYS (FROM measurement)?)
+
+// 其他语句 (简化)
+other_statement ::= (CREATE | DROP | DELETE | GRANT | REVOKE) any_tokens
+private any_tokens ::= (IDENTIFIER | STRING_LITERAL | NUMBER_LITERAL | KEYWORDS | OPERATORS | PUNCTUATION)*
+
+// 表达式相关
+private expression ::= binary_expression
+private binary_expression ::= unary_expression ( (EQ|NEQ|LT|LTE|GT|GTE|REGEQ|REGNEQ|PLUS|MINUS|MUL|DIV|AND|OR) unary_expression )*
+private unary_expression ::= ('-'|'+')? primary_expression
+private primary_expression ::= literal | identifierMy | function_call | '(' expression ')'
+
+function_call ::= identifierMy '(' (DISTINCT? (expression (',' expression)*) | MUL)? ')'
+literal ::= NUMBER_LITERAL | STRING_LITERAL | BOOLEAN_LITERAL | DURATION_LITERAL
+identifierMy ::= IDENTIFIER
+
+// Meta rules for better structure
+private KEYWORDS ::= SELECT | FROM | WHERE | GROUP | BY | ORDER | LIMIT | SLIMIT | OFFSET | SOFFSET | INTO | CREATE | DATABASE | DROP | DELETE | SHOW | DATABASES | MEASUREMENTS | SERIES | FIELD | KEYS | TAG | CONTINUOUS | QUERIES | QUERY | RETENTION | POLICY | ON | RESAMPLE | FOR | BEGIN_STMT | END_STMT | ALL | ANY_KEYWORD | AS | ASC | DESC | DISTINCT | GRANT | REVOKE | USER | USERS | WITH | TO
+private OPERATORS ::= EQ | NEQ | LT | LTE | GT | GTE | PLUS | MINUS | MUL | DIV | AND | OR | REGEQ | REGNEQ
+private PUNCTUATION ::= LPAREN | RPAREN | COMMA | DOT | SEMICOLON

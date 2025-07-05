@@ -1,5 +1,6 @@
 package com.chenxinzhi.plugins.intellij.view
 
+import com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLLanguage
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
 import com.chenxinzhi.plugins.intellij.utils.onChange
@@ -25,7 +26,6 @@ import javax.swing.*
 import javax.swing.table.DefaultTableModel
 
 class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
-    private val sqlLanguage = SqlLanguage.INSTANCE
 
     private val influxUrlField = JTextField("")
     private val dbNameField = JTextField("")
@@ -33,7 +33,7 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
     private val passwordField = JPasswordField("")
 
     private val editorField = EditorTextFieldProvider.getInstance().getEditorField(
-        sqlLanguage,
+        InfluxQLLanguage,
         project,
         emptyList()
     ).apply {
