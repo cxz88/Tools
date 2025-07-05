@@ -11,8 +11,6 @@
   psiImplUtilClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLPsiImplUtil"
   tokens = [
     COMMENT = 'comment'
-    DOUBLE_QUOTES='"'
-    SINGLE_QUOTES="'"
     // 如果以后还有类似的，比如块注释，也可以加在这里
     // BLOCK_COMMENT = 'block_comment'
   ]
