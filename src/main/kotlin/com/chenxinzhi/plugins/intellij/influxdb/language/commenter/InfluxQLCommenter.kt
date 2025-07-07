@@ -34,7 +34,7 @@ class InfluxQLCommenter : Commenter {
      * 通常和 getLineCommentPrefix() 返回的一样。
      */
     override fun getCommentedBlockCommentPrefix(): String? {
-        return null
+        return lineCommentPrefix
     }
 
     /**

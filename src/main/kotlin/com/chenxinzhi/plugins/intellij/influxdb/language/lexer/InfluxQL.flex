@@ -100,6 +100,9 @@ BOOLEAN_LITERAL=("true"|"false")
   "OR"                       { return OR; }
   "=~"                       { return REGEQ; }
   "!~"                       { return REGNEQ; }
+  "\""                       { return DOUBLE_QUOTES; }
+  "'"                        { return SINGLE_QUOTES; }
+
 
   /* Delimiters */
   "("                        { return LPAREN; }
@@ -115,6 +118,9 @@ BOOLEAN_LITERAL=("true"|"false")
   {FLOAT_LITERAL}            { return NUMBER_LITERAL; }
   {INTEGER_LITERAL}          { return NUMBER_LITERAL; }
   {STRING_LITERAL}           { return STRING_LITERAL; }
+   \"([^\\\"]|\\.)*\"        { return STRING_LITERAL; }
+   \'([^\\\']|\\.)*\'        { return STRING_LITERAL; }
+
 
   /* Identifier */
   {IDENTIFIER}               { return IDENTIFIER; }

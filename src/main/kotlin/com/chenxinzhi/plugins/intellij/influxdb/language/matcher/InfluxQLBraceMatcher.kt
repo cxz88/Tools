@@ -20,5 +20,5 @@ class InfluxQLBraceMatcher : PairedBraceMatcher {
 }
 
 private val PAIRS = arrayOf(
-    BracePair(InfluxQLTypes.LPAREN, InfluxQLTypes.RPAREN, true)
+    BracePair(InfluxQLTypes.LPAREN, InfluxQLTypes.RPAREN, true),
 )

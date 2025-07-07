@@ -1,16 +1,15 @@
 package com.chenxinzhi.plugins.intellij.influxdb.language.completion
 
+import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLIdentifierMy
+import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLMeasurement
+import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLSelectStatement
+import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLWhereClause
+import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
-import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLFromClause
-import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLMeasurement
-import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLSelectStatement
-import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTypes
-import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
-
 import kotlin.jvm.java
 
 class InfluxQLCompletionContributor : CompletionContributor() {
@@ -19,10 +18,18 @@ class InfluxQLCompletionContributor : CompletionContributor() {
         extend(CompletionType.BASIC, psiElement(), KeywordCompletionProvider())
 
         // 2. 表名 (Measurement) 补全
-        extend(CompletionType.BASIC, psiElement(InfluxQLTypes.IDENTIFIER).withParent(InfluxQLFromClause::class.java), MeasurementCompletionProvider())
+        extend(
+            CompletionType.BASIC,
+            psiElement().withParents(InfluxQLIdentifierMy::class.java, InfluxQLMeasurement::class.java),
+            MeasurementCompletionProvider()
+        )
 
         // 3. 字段名 (Field Key) 补全
-        extend(CompletionType.BASIC, psiElement(InfluxQLTypes.IDENTIFIER), FieldKeyCompletionProvider())
+        extend(
+            CompletionType.BASIC,
+            psiElement().withParents(InfluxQLIdentifierMy::class.java,InfluxQLWhereClause::class.java),
+            FieldKeyCompletionProvider()
+        )
     }
 
     private class KeywordCompletionProvider : CompletionProvider<CompletionParameters>() {
@@ -32,13 +39,21 @@ class InfluxQLCompletionContributor : CompletionContributor() {
             // 添加更多关键字
         ).map { LookupElementBuilder.create(it).withBoldness(true) }
 
-        override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+        override fun addCompletions(
+            parameters: CompletionParameters,
+            context: ProcessingContext,
+            result: CompletionResultSet
+        ) {
             result.addAllElements(KEYWORDS)
         }
     }
 
     private class MeasurementCompletionProvider : CompletionProvider<CompletionParameters>() {
-        override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+        override fun addCompletions(
+            parameters: CompletionParameters,
+            context: ProcessingContext,
+            result: CompletionResultSet
+        ) {
             val project = parameters.originalFile.project
             val dbManager = project.getService(InfluxDBManager::class.java)
 
@@ -50,21 +65,27 @@ class InfluxQLCompletionContributor : CompletionContributor() {
     }
 
     private class FieldKeyCompletionProvider : CompletionProvider<CompletionParameters>() {
-        override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+        override fun addCompletions(
+            parameters: CompletionParameters,
+            context: ProcessingContext,
+            result: CompletionResultSet
+        ) {
             val position = parameters.position
 
             // 向上查找包含当前位置的 SELECT 语句
             val selectStatement = PsiTreeUtil.getParentOfType(position, InfluxQLSelectStatement::class.java) ?: return
 
             // 我们只在 SELECT 关键字之后，FROM 关键字之前的位置提示字段
-            val fromClause = selectStatement.fromClause ?: return
-            if (position.textOffset > fromClause.textOffset) {
-                // 如果光标在 FROM 之后，则不提示字段名（可以在 WHERE 子句中做更复杂的判断）
-                return
+            val fromClause = selectStatement.fromClause
+            fromClause.measurementList.firstOrNull()?.let {
+                val project = parameters.originalFile.project
+                val dbManager = project.getService(InfluxDBManager::class.java)
+                val fieldKeys = dbManager.fetchFieldKeys(it.name ?: "")
+                fieldKeys.forEach {
+                    result.addElement(LookupElementBuilder.create(it).withIcon(com.intellij.icons.AllIcons.Nodes.Field))
+                }
             }
 
-            val project = parameters.originalFile.project
-            val dbManager = project.getService(InfluxDBManager::class.java)
 
             // 从 FROM 子句中找到所有的表名
             val measurements = selectStatement.fromClause?.measurementList ?: emptyList()
@@ -72,10 +93,7 @@ class InfluxQLCompletionContributor : CompletionContributor() {
                 // 为简化，我们只取第一个表的字段
                 val firstMeasurementName = measurements.first().name ?: return
 
-                val fieldKeys = dbManager.fetchFieldKeys(firstMeasurementName)
-                fieldKeys.forEach {
-                    result.addElement(LookupElementBuilder.create(it).withIcon(com.intellij.icons.AllIcons.Nodes.Field))
-                }
+
             }
         }
     }

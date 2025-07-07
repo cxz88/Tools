@@ -110,7 +110,7 @@ public class InfluxQLParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // LPAREN | RPAREN | COMMA | DOT | SEMICOLON
+  // LPAREN | RPAREN | COMMA | DOT | SEMICOLON | DOUBLE_QUOTES | SINGLE_QUOTES
   static boolean PUNCTUATION(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "PUNCTUATION")) return false;
     boolean r;
@@ -119,6 +119,8 @@ public class InfluxQLParser implements PsiParser, LightPsiParser {
     if (!r) r = consumeToken(b, COMMA);
     if (!r) r = consumeToken(b, DOT);
     if (!r) r = consumeToken(b, SEMICOLON);
+    if (!r) r = consumeToken(b, DOUBLE_QUOTES);
+    if (!r) r = consumeToken(b, SINGLE_QUOTES);
     return r;
   }
 

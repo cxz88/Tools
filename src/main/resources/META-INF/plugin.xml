@@ -64,6 +64,12 @@
         <!-- ↓↓↓ 添加下面这个新的扩展 ↓↓↓ -->
         <lang.commenter language="InfluxQL"
                         implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.commenter.InfluxQLCommenter"/>
+        <lang.quoteHandler language="InfluxQL"
+                           implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLQuoteHandler"/>
+
+
+
+
     </extensions>
 
 </idea-plugin>

@@ -1,23 +1,30 @@
 package com.chenxinzhi.plugins.intellij.view
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.SwingPanel
 import com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLLanguage
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
+import com.chenxinzhi.plugins.intellij.services.InfluxQueryService
 import com.chenxinzhi.plugins.intellij.utils.onChange
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.Messages
-import com.intellij.sql.psi.SqlLanguage
 import com.intellij.ui.EditorTextFieldProvider
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
-import okhttp3.Credentials
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.codehaus.jettison.json.JSONObject
+import kotlinx.coroutines.flow.MutableSharedFlow
+import org.jetbrains.jewel.bridge.JewelComposePanel
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.SimpleTabContent
+import org.jetbrains.jewel.ui.component.TabData
+import org.jetbrains.jewel.ui.component.TabStrip
+import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import java.awt.*
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -25,12 +32,13 @@ import java.time.format.DateTimeFormatter
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
 
-class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
+// 这些字段保持在类外，与您原始代码一致
+val influxUrlField = JTextField("192.168.11.211:8087")
+val dbNameField = JTextField("admin")
+val userField = JTextField("test")
+val passwordField = JPasswordField("1qaz2wsx!@#$")
 
-    private val influxUrlField = JTextField("")
-    private val dbNameField = JTextField("")
-    private val userField = JTextField("")
-    private val passwordField = JPasswordField("")
+class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private val editorField = EditorTextFieldProvider.getInstance().getEditorField(
         InfluxQLLanguage,
@@ -38,15 +46,36 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
         emptyList()
     ).apply {
         preferredSize = Dimension(100, 100)
-
     }
+    // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
+    private var resultTabs: JComponent? = JewelComposePanel {
+        JewelComposePanel {
+            val tabDataDefaults = remember(tabs, tabsIndex) {
+                tabs.mapIndexed { index, id ->
+                    TabData.Default(
+                        selected = index == tabsIndex,
+                        content = { tabState ->
+                            SimpleTabContent(label = id, state = tabState, icon = null)
+                        },
+                        onClick = { tabsIndex = index },
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TabStrip(
+                    tabs = tabDataDefaults,
+                    style = JewelTheme.defaultTabStyle,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (components != null) {
+                SwingPanel(factory = {
+                    components[tabsIndex]
+                })
+            }
 
-    private val resultTable = JBTable(object : DefaultTableModel() {
-        override fun isCellEditable(row: Int, column: Int) = false
-    }).apply {
-        autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS  // ✅ 让列宽自动平铺
-        setRowSelectionAllowed(true)
-        setFillsViewportHeight(true) // ✅ 可选：让表格撑满 viewport
+
+        }
     }
 
     private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total", 0).get())
@@ -54,6 +83,12 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private var currentPage = 0
     private val pageSize = 50
+
+    private var tabs: List<String> by mutableStateOf(listOf(""))
+    private var tabsIndex by mutableStateOf(0)
+
+    var componentsJb: List<JBTable>? = null
+
     private fun saveSettings() {
         val state = InfluxDbProjectSettingsService.getInstance(project).state
         state.influxUrl = influxUrlField.text
@@ -73,6 +108,7 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
         dbNameField.onChange { saveSettings() }
         userField.onChange { saveSettings() }
         passwordField.onChange { saveSettings() }
+
         val runButton = JButton(LanguageBundle.messagePointer("tool.influxDb.query").get()).apply {
             preferredSize = Dimension(90, 28)
             margin = JBUI.insets(2, 8)
@@ -82,14 +118,25 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
             val sql = editorField.text.trim()
             if (sql.isNotEmpty()) {
                 val paginatedSql = "$sql LIMIT $pageSize OFFSET ${currentPage * pageSize}"
-                val result = InfluxQueryService.query(
-                    influxUrlField.text.trim(),
-                    dbNameField.text.trim(),
-                    userField.text.trim(),
-                    String(passwordField.password),
-                    paginatedSql
-                )
-                resultTable.model = buildTableModel(result)
+                val result = InfluxQueryService.query(paginatedSql)
+                // ✅ 清除旧的结果，并为每个数据系列（series）创建新的标签页
+                if (result.isNotEmpty()) {
+                    tabs = result.keys.toList()
+                    tabsIndex = 0
+                    componentsJb = result.map { (seriesName, data) ->
+                        val tableModel = buildTableModelForSeries(data)
+                        JBTable(tableModel).apply {
+                            autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
+                            setRowSelectionAllowed(true)
+                            setFillsViewportHeight(true)
+                        }
+                    }
+
+                } else {
+                    // 可选：当没有结果时显示一条消息
+                    val noResultsPanel = JPanel(GridBagLayout())
+                    noResultsPanel.add(JLabel("查询未返回任何结果。"))
+                }
 
                 val totalCount = InfluxQueryService.count(
                     influxUrlField.text.trim(),
@@ -108,9 +155,7 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
         val configPanel = JPanel(GridBagLayout()).apply {
             border = BorderFactory.createTitledBorder(LanguageBundle.messagePointer("tool.influxDb.connectInfo").get())
-
             val insets = JBUI.insets(4, 8)
-
             fun addLabelAndField(gridx: Int, gridy: Int, label: String, field: JComponent) {
                 add(JLabel(label), GridBagConstraints().apply {
                     this.gridx = gridx
@@ -118,7 +163,6 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
                     this.anchor = GridBagConstraints.EAST
                     this.insets = insets
                 })
-
                 add(field, GridBagConstraints().apply {
                     this.gridx = gridx + 1
                     this.gridy = gridy
@@ -127,13 +171,11 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
                     this.insets = insets
                 })
             }
-
             addLabelAndField(0, 0, "URL:", influxUrlField)
             addLabelAndField(2, 0, LanguageBundle.messagePointer("tool.gen.select.database").get(), dbNameField)
             addLabelAndField(0, 1, LanguageBundle.messagePointer("tool.influxDb.user").get(), userField)
             addLabelAndField(2, 1, LanguageBundle.messagePointer("tool.influxDb.pwd").get(), passwordField)
         }
-
 
         val paginationPanel = JPanel(FlowLayout(FlowLayout.RIGHT)).apply {
             add(JButton(LanguageBundle.messagePointer("tool.influxDb.previousPage").get()).apply {
@@ -167,7 +209,9 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
         val centerPanel = JPanel(BorderLayout(10, 10)).apply {
             add(topPanel, BorderLayout.NORTH)
-            add(JBScrollPane(resultTable), BorderLayout.CENTER)
+            // ✅ 将选项卡面板添加到布局中，而不是原来的单个滚动面板
+            add(resultTabs, BorderLayout.CENTER)
+
         }
 
         layout = BorderLayout(10, 10)
@@ -176,9 +220,15 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
         add(bottomPanel, BorderLayout.SOUTH)
     }
 
-    private fun buildTableModel(data: List<Map<String, String>>): DefaultTableModel {
+    /**
+     * ✅ 重构后的方法，为单个数据系列列表构建TableModel
+     * @param data 单个系列的数据列表
+     * @return DefaultTableModel
+     */
+    private fun buildTableModelForSeries(data: List<Map<String, String>>): DefaultTableModel {
         if (data.isEmpty()) return DefaultTableModel()
-        val columns = data[0].keys.toTypedArray()
+
+        val columns = data.firstOrNull()?.keys?.toTypedArray() ?: emptyArray()
 
         val rows = data.map { row ->
             columns.map { column ->
@@ -198,101 +248,17 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private fun formatTime(utcTime: String): String {
         return try {
-            val inputFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]'Z'")
+            // 兼容可选的纳秒精度 (e.g., .SSS, .SSSSSS, .SSSSSSSSS)
+            val inputFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]'Z'")
                 .withZone(ZoneOffset.UTC)
-
+            // 使用系统默认时区进行显示，对用户更友好
             val outputFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                .withZone(ZoneId.of("Asia/Shanghai"))
+                .withZone(ZoneId.systemDefault())
 
             val instant = Instant.from(inputFormat.parse(utcTime))
             outputFormat.format(instant)
         } catch (e: Exception) {
-            utcTime // 解析失败就原样返回
+            utcTime // 如果解析失败，返回原始字符串
         }
     }
-
-}
-
-object InfluxQueryService {
-    private val client = OkHttpClient()
-
-
-    fun query(
-        url: String,
-        db: String,
-        user: String,
-        password: String,
-        sql: String
-    ): List<Map<String, String>> {
-        try {
-            val encodedQuery = URLEncoder.encode(sql, StandardCharsets.UTF_8)
-            val fullUrl = "$url/query?db=$db&q=$encodedQuery"
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .header("Authorization", Credentials.basic(user, password))
-                .get()
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw RuntimeException("Query failed: HTTP ${response.code} ${response.message}")
-                }
-
-                val responseBody = response.body.string()
-                val json = JSONObject(responseBody)
-
-                val results = json.optJSONArray("results")
-                    ?: throw RuntimeException("Response format: Missing 'results' field")
-
-                if (results.length() == 0) return emptyList()
-
-                val series = results.getJSONObject(0).optJSONArray("series")
-                    ?: return emptyList()
-
-                if (series.length() == 0) return emptyList()
-
-                val first = series.getJSONObject(0)
-                val columns = first.getJSONArray("columns")
-                val values = first.getJSONArray("values")
-
-                return (0 until values.length()).map { i ->
-                    val row = values.getJSONArray(i)
-                    (0 until columns.length()).associate { j ->
-                        columns.getString(j) to row.optString(j)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Messages.showErrorDialog(
-                "An error occurred during query:\n${e.message}",
-                LanguageBundle.messagePointer("tool.influxDb.searchError").get()
-            )
-            // 根据需求决定返回空列表还是继续抛出异常
-            return emptyList()
-        }
-    }
-
-
-    fun count(url: String, db: String, user: String, password: String, originalSql: String): Int {
-        try {
-            val fromIndex = originalSql.indexOf("from", ignoreCase = true)
-            if (fromIndex == -1) return 0
-            val fromClause = originalSql.substring(fromIndex)
-            val countSql = "SELECT COUNT(*) $fromClause"
-            val result = query(url, db, user, password, countSql)
-            val countValue = result.firstOrNull()?.values?.toList()?.get(1) ?: "0"
-            return countValue.toIntOrNull() ?: 0
-        } catch (e: Exception) {
-            // 在IDEA弹窗提示错误
-            Messages.showErrorDialog(
-                "An error occurred during query:\n${e.message}",
-                LanguageBundle.messagePointer("tool.influxDb.searchError").get()
-            )
-            // 根据需求决定返回空列表还是继续抛出异常
-            return 0
-
-        }
-    }
-
 }

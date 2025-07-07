@@ -1,5 +1,6 @@
 package com.chenxinzhi.plugins.intellij.utils
 
+import com.chenxinzhi.plugins.intellij.services.InfluxQueryService
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 
@@ -20,20 +21,18 @@ class InfluxDBManager(private val project: Project) {
 
     // 从数据库获取所有表名
     fun fetchMeasurements(): List<String> {
-        val connection = getCurrentConnection() ?: return emptyList()
-        // TODO: 在这里实现真实的 HTTP 请求到 InfluxDB 的 /query 端点
-        // val query = "SHOW MEASUREMENTS ON \"${connection.database}\""
-        // 执行查询并解析结果
-        println("Fetching measurements for DB: ${connection.database}")
-        return listOf("cpu_load", "memory_usage", "disk_io", "network_traffic") // 模拟数据
+        val sql = "SHOW MEASUREMENTS"
+        val query = InfluxQueryService.query(sql)
+        return query.values.firstOrNull()?.flatMap { it.values }?:emptyList() // 模拟数据
     }
 
     // 从数据库获取指定表的字段名
     fun fetchFieldKeys(measurement: String): List<String> {
-        val connection = getCurrentConnection() ?: return emptyList()
-        // TODO: 在这里实现真实的 HTTP 请求
-        // val query = "SHOW FIELD KEYS ON \"${connection.database}\" FROM \"$measurement\""
-        println("Fetching field keys for measurement: $measurement")
-        return listOf("value", "usage_user", "usage_system", "iops_read", "iops_write") // 模拟数据
+        val sql = "SHOW FIELD KEYS FROM \"$measurement\""
+        val query = InfluxQueryService.query(sql)
+        val sql1 = "SHOW TAG KEYS FROM \"$measurement\""
+        val query1 = InfluxQueryService.query(sql1)
+        return query.filter { it.value.firstOrNull()?.keys?.contains("fieldKey")==true }
+            .flatMap { it.value.firstOrNull()?.values?:emptyList() } + query1.flatMap { it.value.firstOrNull()?.values?:emptyList() } // 模拟数据
     }
 }

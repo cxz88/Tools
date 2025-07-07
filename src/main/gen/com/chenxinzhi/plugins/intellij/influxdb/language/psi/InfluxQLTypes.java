@@ -38,7 +38,7 @@ public interface InfluxQLTypes {
   IElementType BOOLEAN_LITERAL = new InfluxQLTokenType("BOOLEAN_LITERAL");
   IElementType BY = new InfluxQLTokenType("BY");
   IElementType COMMA = new InfluxQLTokenType("COMMA");
-  IElementType COMMENT = new InfluxQLTokenType("comment");
+  IElementType COMMENT = new InfluxQLTokenType("COMMENT");
   IElementType CONTINUOUS = new InfluxQLTokenType("CONTINUOUS");
   IElementType CREATE = new InfluxQLTokenType("CREATE");
   IElementType DATABASE = new InfluxQLTokenType("DATABASE");
@@ -48,6 +48,7 @@ public interface InfluxQLTypes {
   IElementType DISTINCT = new InfluxQLTokenType("DISTINCT");
   IElementType DIV = new InfluxQLTokenType("DIV");
   IElementType DOT = new InfluxQLTokenType("DOT");
+  IElementType DOUBLE_QUOTES = new InfluxQLTokenType("DOUBLE_QUOTES");
   IElementType DROP = new InfluxQLTokenType("DROP");
   IElementType DURATION_LITERAL = new InfluxQLTokenType("DURATION_LITERAL");
   IElementType END_STMT = new InfluxQLTokenType("END_STMT");
@@ -90,6 +91,7 @@ public interface InfluxQLTypes {
   IElementType SEMICOLON = new InfluxQLTokenType("SEMICOLON");
   IElementType SERIES = new InfluxQLTokenType("SERIES");
   IElementType SHOW = new InfluxQLTokenType("SHOW");
+  IElementType SINGLE_QUOTES = new InfluxQLTokenType("SINGLE_QUOTES");
   IElementType SLIMIT = new InfluxQLTokenType("SLIMIT");
   IElementType SOFFSET = new InfluxQLTokenType("SOFFSET");
   IElementType STRING_LITERAL = new InfluxQLTokenType("STRING_LITERAL");

@@ -10,7 +10,8 @@
   tokenTypeClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTokenType"
   psiImplUtilClass="com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLPsiImplUtil"
   tokens = [
-    COMMENT = 'comment'
+    COMMENT = 'COMMENT'
+
     // 如果以后还有类似的，比如块注释，也可以加在这里
     // BLOCK_COMMENT = 'block_comment'
   ]
@@ -69,4 +70,4 @@ identifierMy ::= IDENTIFIER
 // Meta rules for better structure
 private KEYWORDS ::= SELECT | FROM | WHERE | GROUP | BY | ORDER | LIMIT | SLIMIT | OFFSET | SOFFSET | INTO | CREATE | DATABASE | DROP | DELETE | SHOW | DATABASES | MEASUREMENTS | SERIES | FIELD | KEYS | TAG | CONTINUOUS | QUERIES | QUERY | RETENTION | POLICY | ON | RESAMPLE | FOR | BEGIN_STMT | END_STMT | ALL | ANY_KEYWORD | AS | ASC | DESC | DISTINCT | GRANT | REVOKE | USER | USERS | WITH | TO
 private OPERATORS ::= EQ | NEQ | LT | LTE | GT | GTE | PLUS | MINUS | MUL | DIV | AND | OR | REGEQ | REGNEQ
-private PUNCTUATION ::= LPAREN | RPAREN | COMMA | DOT | SEMICOLON
+private PUNCTUATION ::= LPAREN | RPAREN | COMMA | DOT | SEMICOLON | DOUBLE_QUOTES | SINGLE_QUOTES
