@@ -34,11 +34,9 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
     ).apply {
         preferredSize = Dimension(100, 100)
     }
-
+    @Suppress("unused")
     // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
-    private val resultTabs = JBTabbedPane().apply {
-        setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT)
-    }
+    private val resultTabs = JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT)
 
     private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total", 0).get())
     private val pageInfoLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.pageInfo", 1, 1).get())
