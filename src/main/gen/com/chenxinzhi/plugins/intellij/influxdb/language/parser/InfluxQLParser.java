@@ -936,7 +936,7 @@ public class InfluxQLParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // (select_statement | show_statement | other_statement) (';')?
+  // (select_statement | show_statement) (';')?
   static boolean statement(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "statement")) return false;
     boolean r, p;
@@ -948,13 +948,12 @@ public class InfluxQLParser implements PsiParser, LightPsiParser {
     return r || p;
   }
 
-  // select_statement | show_statement | other_statement
+  // select_statement | show_statement
   private static boolean statement_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "statement_0")) return false;
     boolean r;
     r = select_statement(b, l + 1);
     if (!r) r = show_statement(b, l + 1);
-    if (!r) r = other_statement(b, l + 1);
     return r;
   }
 
