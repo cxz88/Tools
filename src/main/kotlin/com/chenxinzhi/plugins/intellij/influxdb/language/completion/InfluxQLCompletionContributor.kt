@@ -35,7 +35,7 @@ class InfluxQLCompletionContributor : CompletionContributor() {
     private class KeywordCompletionProvider : CompletionProvider<CompletionParameters>() {
         private val KEYWORDS = listOf(
             "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "SHOW", "DATABASES",
-            "MEASUREMENTS", "FIELD KEYS", "TAG KEYS", "CREATE", "DROP", "DELETE", "AND", "OR"
+            "MEASUREMENTS", "FIELD KEYS", "TAG KEYS", "AND", "OR"
             // 添加更多关键字
         ).map { LookupElementBuilder.create(it).withBoldness(true) }
 
