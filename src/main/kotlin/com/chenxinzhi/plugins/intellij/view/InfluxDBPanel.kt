@@ -1,13 +1,5 @@
 package com.chenxinzhi.plugins.intellij.view
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.SwingPanel
 import com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLLanguage
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
@@ -15,15 +7,10 @@ import com.chenxinzhi.plugins.intellij.services.InfluxQueryService
 import com.chenxinzhi.plugins.intellij.utils.onChange
 import com.intellij.openapi.project.Project
 import com.intellij.ui.EditorTextFieldProvider
+import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
-import kotlinx.coroutines.flow.MutableSharedFlow
-import org.jetbrains.jewel.bridge.JewelComposePanel
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.SimpleTabContent
-import org.jetbrains.jewel.ui.component.TabData
-import org.jetbrains.jewel.ui.component.TabStrip
-import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import java.awt.*
 import java.time.Instant
 import java.time.ZoneId
@@ -47,35 +34,10 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
     ).apply {
         preferredSize = Dimension(100, 100)
     }
+
     // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
-    private var resultTabs: JComponent? = JewelComposePanel {
-        JewelComposePanel {
-            val tabDataDefaults = remember(tabs, tabsIndex) {
-                tabs.mapIndexed { index, id ->
-                    TabData.Default(
-                        selected = index == tabsIndex,
-                        content = { tabState ->
-                            SimpleTabContent(label = id, state = tabState, icon = null)
-                        },
-                        onClick = { tabsIndex = index },
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TabStrip(
-                    tabs = tabDataDefaults,
-                    style = JewelTheme.defaultTabStyle,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            if (components != null) {
-                SwingPanel(factory = {
-                    components[tabsIndex]
-                })
-            }
-
-
-        }
+    private val resultTabs = JBTabbedPane().apply {
+        setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT)
     }
 
     private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total", 0).get())
@@ -83,11 +45,6 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private var currentPage = 0
     private val pageSize = 50
-
-    private var tabs: List<String> by mutableStateOf(listOf(""))
-    private var tabsIndex by mutableStateOf(0)
-
-    var componentsJb: List<JBTable>? = null
 
     private fun saveSettings() {
         val state = InfluxDbProjectSettingsService.getInstance(project).state
@@ -119,24 +76,27 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
             if (sql.isNotEmpty()) {
                 val paginatedSql = "$sql LIMIT $pageSize OFFSET ${currentPage * pageSize}"
                 val result = InfluxQueryService.query(paginatedSql)
+
                 // ✅ 清除旧的结果，并为每个数据系列（series）创建新的标签页
+                resultTabs.removeAll()
                 if (result.isNotEmpty()) {
-                    tabs = result.keys.toList()
-                    tabsIndex = 0
-                    componentsJb = result.map { (seriesName, data) ->
+                    result.forEach { (seriesName, data) ->
                         val tableModel = buildTableModelForSeries(data)
-                        JBTable(tableModel).apply {
+                        val table = JBTable(tableModel).apply {
                             autoResizeMode = JBTable.AUTO_RESIZE_ALL_COLUMNS
                             setRowSelectionAllowed(true)
                             setFillsViewportHeight(true)
                         }
+                        // 使用seriesName作为标签页标题，并将包含表格的滚动面板作为内容
+                        resultTabs.addTab(seriesName, JBScrollPane(table))
                     }
-
                 } else {
                     // 可选：当没有结果时显示一条消息
                     val noResultsPanel = JPanel(GridBagLayout())
                     noResultsPanel.add(JLabel("查询未返回任何结果。"))
+                    resultTabs.addTab("Result", noResultsPanel)
                 }
+
 
                 val totalCount = InfluxQueryService.count(
                     influxUrlField.text.trim(),
@@ -211,7 +171,6 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
             add(topPanel, BorderLayout.NORTH)
             // ✅ 将选项卡面板添加到布局中，而不是原来的单个滚动面板
             add(resultTabs, BorderLayout.CENTER)
-
         }
 
         layout = BorderLayout(10, 10)
