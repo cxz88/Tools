@@ -20,7 +20,7 @@
 
 influxQLFile ::= statement*
 
-private statement ::= (select_statement | show_statement | other_statement) (';')? {
+private statement ::= (select_statement | show_statement) (';')? {
     pin=1 // Pin the first element of a statement
     recoverWhile=statement_recovery
 }
