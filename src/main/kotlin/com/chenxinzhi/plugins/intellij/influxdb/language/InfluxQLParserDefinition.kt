@@ -14,7 +14,7 @@ import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLFile
 import com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTypes
 
 class InfluxQLParserDefinition : ParserDefinition {
-    override fun createLexer(project: Project) = InfluxQLLexerAdapter()
+    override fun createLexer(project: Project) = InfluxQLLexerAdapter
 
     override fun createParser(project: Project) = InfluxQLParser()
 

@@ -1,6 +1,7 @@
 package com.chenxinzhi.plugins.intellij.settings
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.options.Configurable
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.LanguageTextField
@@ -167,23 +168,29 @@ class NamingStyleConfigurable : Configurable, com.intellij.openapi.Disposable {
         // 创建简单的编辑器
         try {
 
-            editor = LanguageTextField(
+            editor =object :LanguageTextField(
                 GroovyLanguage,
                 if (currentProject?.isDefault == true) null else currentProject,
                 scriptTemplate  // 初始文本
                 ,false
-            )
-            val settings = editor.editor?.settings
-            settings?.isLineNumbersShown = true
-            settings?.isLineMarkerAreaShown = true
-            settings?.isFoldingOutlineShown = false  // 禁用代码折叠，避免高度变化
-            settings?.isSmartHome = true
-            settings?.additionalLinesCount = 0      // 减少额外的行数
-            settings?.additionalColumnsCount = 0    // 减少额外的列数
-            settings?.isUseSoftWraps = false        // 禁用软换行
-            // 禁用不必要的功能，减少界面元素
-            settings?.isShowIntentionBulb = false
-            settings?.isAutoCodeFoldingEnabled = false
+            ){
+                override fun createEditor(): EditorEx {
+                    val createEditor = super.createEditor()
+                    val settings = createEditor.settings
+                    settings.isLineNumbersShown = true
+                    settings.isLineMarkerAreaShown = true
+                    settings.isFoldingOutlineShown = false  // 禁用代码折叠，避免高度变化
+                    settings.isSmartHome = true
+                    settings.additionalLinesCount = 0      // 减少额外的行数
+                    settings.additionalColumnsCount = 0    // 减少额外的列数
+                    settings.isUseSoftWraps = false        // 禁用软换行
+                    // 禁用不必要的功能，减少界面元素
+                    settings.isShowIntentionBulb = false
+                    settings.isAutoCodeFoldingEnabled = false
+                    return createEditor
+                }
+            }
+
             // 监听文档变化
             editorDocument = editor.document
             editorDocument.addDocumentListener(scriptDocumentListener)

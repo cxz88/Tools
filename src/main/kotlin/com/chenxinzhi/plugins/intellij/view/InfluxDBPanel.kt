@@ -4,9 +4,11 @@ import com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLLanguage
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
 import com.chenxinzhi.plugins.intellij.services.InfluxQueryService
+import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
 import com.chenxinzhi.plugins.intellij.utils.onChange
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.project.Project
-import com.intellij.ui.EditorTextFieldProvider
+import com.intellij.ui.LanguageTextField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
@@ -26,13 +28,19 @@ val passwordField = JPasswordField("")
 
 class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
-    private val editorField = EditorTextFieldProvider.getInstance().getEditorField(
-        InfluxQLLanguage,
-        project,
-        emptyList()
-    ).apply {
-        preferredSize = Dimension(100, 100)
-    }
+    private val editorField = object : LanguageTextField(InfluxQLLanguage, project, "", false) {
+        // 重写 createEditor 方法
+        override fun createEditor(): EditorEx {
+            // 首先，调用父类的方法来创建 editor 实例
+            val editor = super.createEditor()
+            editor.settings.isLineNumbersShown = true
+            editor.settings.isIndentGuidesShown = true
+
+
+
+            return editor
+        }
+    }.apply { preferredSize = Dimension(100, 100) }
 
     @Suppress("unused")
     // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
@@ -43,13 +51,15 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private var currentPage = 0
     private val pageSize = 50
-
+    val dbManager: InfluxDBManager? = project.getService(InfluxDBManager::class.java)
     private fun saveSettings() {
         val state = InfluxDbProjectSettingsService.getInstance(project).state
         state.influxUrl = influxUrlField.text
         state.dbName = dbNameField.text
         state.user = userField.text
         state.password = String(passwordField.password)
+
+        dbManager?.load()
     }
 
     init {

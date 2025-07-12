@@ -24,7 +24,7 @@ class InfluxQLSyntaxHighlighter : SyntaxHighlighterBase() {
         val BAD_CHARACTER = createTextAttributesKey("INFLUXQL_BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
     }
 
-    override fun getHighlightingLexer(): Lexer = InfluxQLLexerAdapter()
+    override fun getHighlightingLexer(): Lexer = InfluxQLLexerAdapter
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> {
         return when {

@@ -1,6 +1,7 @@
 package com.chenxinzhi.plugins.intellij.influxdb.language.psi;
 
 import com.intellij.psi.tree.IElementType;
+import com.intellij.lexer.FlexLexer;
 
 import static com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTypes.*;
 
@@ -13,7 +14,7 @@ import static com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLType
 %unicode
 
 %{
-  private char yycharat(int pos) { return 0; }  public _InfluxQLLexer() {
+  public _InfluxQLLexer() {
     this((java.io.Reader)null);
   }
 %}
@@ -102,7 +103,7 @@ BOOLEAN_LITERAL=("true"|"false")
   "'"                        { return SINGLE_QUOTES; }
 
 
-  /* Delimiters */
+
   "("                        { return LPAREN; }
   ")"                        { return RPAREN; }
   ","                        { return COMMA; }
@@ -111,11 +112,14 @@ BOOLEAN_LITERAL=("true"|"false")
 
 
 
-  /* Literals */
+
   {BOOLEAN_LITERAL}          { return BOOLEAN_LITERAL; }
   {DURATION_LITERAL}         { return DURATION_LITERAL; }
   {FLOAT_LITERAL}            { return NUMBER_LITERAL; }
   {INTEGER_LITERAL}          { return NUMBER_LITERAL; }
+
+
+
 
   {IDENTIFIER}               { return IDENTIFIER; }
 
