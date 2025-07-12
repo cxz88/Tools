@@ -5,8 +5,8 @@ import com.chenxinzhi.plugins.intellij.view.dbNameField
 import com.chenxinzhi.plugins.intellij.view.influxUrlField
 import com.chenxinzhi.plugins.intellij.view.passwordField
 import com.chenxinzhi.plugins.intellij.view.userField
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.ui.Messages
-import com.jetbrains.rd.util.firstOrNull
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -57,7 +57,11 @@ object InfluxQueryService {
                     val columns = jSONObject.getJSONArray("columns")
                     val values = jSONObject.getJSONArray("values")
 
-                    jSONObject.getJSONObject("tags").toString() to (0 until values.length()).map { i ->
+                    try {
+                        jSONObject.getJSONObject("tags").toString()
+                    } catch (_: Exception) {
+                        ""
+                    } to (0 until values.length()).map { i ->
                         val row = values.getJSONArray(i)
                         (0 until columns.length()).associate { j ->
                             columns.getString(j) to row.optString(j)

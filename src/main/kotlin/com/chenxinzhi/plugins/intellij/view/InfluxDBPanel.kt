@@ -8,7 +8,6 @@ import com.chenxinzhi.plugins.intellij.utils.onChange
 import com.intellij.openapi.project.Project
 import com.intellij.ui.EditorTextFieldProvider
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import java.awt.*
@@ -34,6 +33,7 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
     ).apply {
         preferredSize = Dimension(100, 100)
     }
+
     @Suppress("unused")
     // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
     private val resultTabs = JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT)

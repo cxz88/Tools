@@ -55,7 +55,7 @@ show_statement ::= SHOW (DATABASES | MEASUREMENTS (ON identifierMy)? | SERIES (F
 
 // 其他语句 (简化)
 other_statement ::= (CREATE | DROP | DELETE | GRANT | REVOKE) any_tokens
-private any_tokens ::= (IDENTIFIER | STRING_LITERAL | NUMBER_LITERAL | KEYWORDS | OPERATORS | PUNCTUATION)*
+private any_tokens ::= (IDENTIFIER | NUMBER_LITERAL | KEYWORDS | OPERATORS | PUNCTUATION)*
 
 // 表达式相关
 private expression ::= binary_expression
@@ -64,7 +64,7 @@ private unary_expression ::= ('-'|'+')? primary_expression
 private primary_expression ::= literal | identifierMy | function_call | '(' expression ')'
 
 function_call ::= identifierMy '(' (DISTINCT? (expression (',' expression)*) | MUL)? ')'
-literal ::= NUMBER_LITERAL | STRING_LITERAL | BOOLEAN_LITERAL | DURATION_LITERAL
+literal ::= NUMBER_LITERAL | identifierMy | BOOLEAN_LITERAL | DURATION_LITERAL
 identifierMy ::= IDENTIFIER
 
 // Meta rules for better structure

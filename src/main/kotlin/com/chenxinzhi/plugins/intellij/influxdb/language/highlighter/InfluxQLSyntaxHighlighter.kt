@@ -30,7 +30,6 @@ class InfluxQLSyntaxHighlighter : SyntaxHighlighterBase() {
         return when {
             InfluxQLTokenSets.KEYWORDS.contains(tokenType) -> arrayOf(KEYWORD)
             tokenType == InfluxQLTypes.IDENTIFIER -> arrayOf(IDENTIFIER)
-            tokenType == InfluxQLTypes.STRING_LITERAL -> arrayOf(STRING)
             tokenType == InfluxQLTypes.NUMBER_LITERAL -> arrayOf(NUMBER)
             tokenType == InfluxQLTypes.COMMENT -> arrayOf(COMMENT)
             tokenType == InfluxQLTypes.LPAREN || tokenType == InfluxQLTypes.RPAREN -> arrayOf(PARENTHESES)

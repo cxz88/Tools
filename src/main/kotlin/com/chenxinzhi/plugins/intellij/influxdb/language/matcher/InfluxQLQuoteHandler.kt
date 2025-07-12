@@ -25,7 +25,7 @@ class InfluxQLQuoteHandler : QuoteHandler {
     }
 
     override fun isInsideLiteral(iterator: HighlighterIterator): Boolean {
-        return iterator.tokenType == InfluxQLTypes.STRING_LITERAL
+        return iterator.tokenType == InfluxQLTypes.IDENTIFIER
     }
 
 

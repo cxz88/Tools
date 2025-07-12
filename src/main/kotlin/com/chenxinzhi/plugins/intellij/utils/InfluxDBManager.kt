@@ -25,27 +25,31 @@ class InfluxDBManager(private val project: Project) {
 
     var list1: List<String> = emptyList()
     var list2: Map<String, List<String>> = emptyMap()
-    fun Project.load() {
-        service<HandlerService>().handler {
+    fun load() {
+        project.service<HandlerService>().handler {
             withContext(Dispatchers.IO) {
-                list1 = run {
-                    val sql = "SHOW MEASUREMENTS"
-                    val query = InfluxQueryService.query(sql)
-                    query.values.firstOrNull()?.flatMap { it.values } ?: emptyList() // 模拟数据
-                }
-                list2 = run {
-                    list1.associateWith {
-                        {
-                            val sql = "SHOW FIELD KEYS FROM \"$it\""
-                            val query = InfluxQueryService.query(sql)
-                            val sql1 = "SHOW TAG KEYS FROM \"$it\""
-                            val query1 = InfluxQueryService.query(sql1)
-                            query.filter { it.value.firstOrNull()?.keys?.contains("fieldKey") == true }
-                                .flatMap {
-                                    it.value.firstOrNull()?.values ?: emptyList()
-                                } + query1.flatMap { it.value.firstOrNull()?.values ?: emptyList() } // 模拟数据} }
-                        }()
+                try {
+                    list1 = run {
+                        val sql = "SHOW MEASUREMENTS"
+                        val query = InfluxQueryService.query(sql)
+                        query.values.firstOrNull()?.flatMap { it.values } ?: emptyList() // 模拟数据
                     }
+                    list2 = run {
+                        list1.associateWith {
+                            {
+                                val sql = "SHOW FIELD KEYS FROM \"$it\""
+                                val query = InfluxQueryService.query(sql)
+                                val sql1 = "SHOW TAG KEYS FROM \"$it\""
+                                val query1 = InfluxQueryService.query(sql1)
+                                query.filter { it.value.firstOrNull()?.keys?.contains("fieldKey") == true }
+                                    .flatMap {
+                                        it.value.firstOrNull()?.values ?: emptyList()
+                                    } + query1.flatMap { it.value.firstOrNull()?.values ?: emptyList() } // 模拟数据} }
+                            }()
+                        }
+                    }
+                } catch (_: Exception) {
+
                 }
             }
         }

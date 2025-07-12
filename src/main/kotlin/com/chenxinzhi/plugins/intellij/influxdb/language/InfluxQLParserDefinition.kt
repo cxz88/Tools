@@ -22,7 +22,7 @@ class InfluxQLParserDefinition : ParserDefinition {
 
     override fun getCommentTokens(): TokenSet = InfluxQLTokenSets.COMMENTS
 
-    override fun getStringLiteralElements(): TokenSet = InfluxQLTokenSets.STRINGS
+    override fun getStringLiteralElements(): TokenSet = InfluxQLTokenSets.IDENTIFIERS
 
     override fun createElement(node: ASTNode): PsiElement = InfluxQLTypes.Factory.createElement(node)
 

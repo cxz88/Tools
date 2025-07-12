@@ -85,16 +85,6 @@ class InfluxQLCompletionContributor : CompletionContributor() {
                     result.addElement(LookupElementBuilder.create(it).withIcon(com.intellij.icons.AllIcons.Nodes.Field))
                 }
             }
-
-
-            // 从 FROM 子句中找到所有的表名
-            val measurements = selectStatement.fromClause?.measurementList ?: emptyList()
-            if (measurements.isNotEmpty()) {
-                // 为简化，我们只取第一个表的字段
-                val firstMeasurementName = measurements.first().name ?: return
-
-
-            }
         }
     }
 }

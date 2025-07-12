@@ -14,6 +14,5 @@ interface InfluxQLTokenSets {
             // ... etc
         )
         val COMMENTS: TokenSet = TokenSet.create(InfluxQLTypes.COMMENT)
-        val STRINGS: TokenSet = TokenSet.create(InfluxQLTypes.STRING_LITERAL)
     }
 }

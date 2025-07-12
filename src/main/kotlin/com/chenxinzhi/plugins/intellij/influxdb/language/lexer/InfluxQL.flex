@@ -1,6 +1,5 @@
 package com.chenxinzhi.plugins.intellij.influxdb.language.psi;
 
-import com.intellij.lexer.FlexLexer;
 import com.intellij.psi.tree.IElementType;
 
 import static com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLTypes.*;
@@ -14,7 +13,7 @@ import static com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLType
 %unicode
 
 %{
-  public _InfluxQLLexer() {
+  private char yycharat(int pos) { return 0; }  public _InfluxQLLexer() {
     this((java.io.Reader)null);
   }
 %}
@@ -22,10 +21,9 @@ import static com.chenxinzhi.plugins.intellij.influxdb.language.psi.InfluxQLType
 CRLF=\R
 WHITE_SPACE=[\ \t\f]+
 LINE_COMMENT=--[^\r\n]*
-IDENTIFIER=([a-zA-Z_][a-zA-Z0-9_]*)|(\"[^\"]+\")
+IDENTIFIER=([a-zA-Z_][a-zA-Z0-9_]*)|(\"[^\"]+\")|('[^']+')
 INTEGER_LITERAL=[0-9]+
 FLOAT_LITERAL=([0-9]+\.[0-9]*)|(\.[0-9]+)|([0-9]+[eE][+-]?[0-9]+)
-STRING_LITERAL='[^']*'
 DURATION_LITERAL=[0-9]+(u|µ|ms|s|m|h|d|w)
 BOOLEAN_LITERAL=("true"|"false")
 
@@ -112,18 +110,16 @@ BOOLEAN_LITERAL=("true"|"false")
   ";"                        { return SEMICOLON; }
 
 
+
   /* Literals */
   {BOOLEAN_LITERAL}          { return BOOLEAN_LITERAL; }
   {DURATION_LITERAL}         { return DURATION_LITERAL; }
   {FLOAT_LITERAL}            { return NUMBER_LITERAL; }
   {INTEGER_LITERAL}          { return NUMBER_LITERAL; }
-  {STRING_LITERAL}           { return STRING_LITERAL; }
-   \"([^\\\"]|\\.)*\"        { return STRING_LITERAL; }
-   \'([^\\\']|\\.)*\'        { return STRING_LITERAL; }
 
-
-  /* Identifier */
   {IDENTIFIER}               { return IDENTIFIER; }
+
+
 }
 
 [^] { return com.intellij.psi.TokenType.BAD_CHARACTER; }
