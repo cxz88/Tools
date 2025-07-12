@@ -20,10 +20,10 @@ import javax.swing.*
 import javax.swing.table.DefaultTableModel
 
 // 这些字段保持在类外，与您原始代码一致
-val influxUrlField = JTextField("192.168.11.211:8087")
-val dbNameField = JTextField("admin")
-val userField = JTextField("test")
-val passwordField = JPasswordField("1qaz2wsx!@#$")
+val influxUrlField = JTextField("")
+val dbNameField = JTextField("")
+val userField = JTextField("")
+val passwordField = JPasswordField("")
 
 class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
