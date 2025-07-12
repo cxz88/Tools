@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project
 @Service(Service.Level.PROJECT)
 @State(
     name = "GenCodeProjectSettingsService",
-    storages = [Storage(StoragePathMacros.WORKSPACE_FILE)]
+    storages = [Storage("gencode-settings.xml")]
 )
 class GenCodeProjectSettingsService(private val project: Project) :
     PersistentStateComponent<GenCodeProjectSettings> {

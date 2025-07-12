@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
 @Service(Service.Level.PROJECT)
 @State(
     name = "InfluxDbProjectSettingsService",
-    storages = [Storage(StoragePathMacros.WORKSPACE_FILE)]
+    storages = [Storage("influxdb-settings.xml")]
 )
 class InfluxDbProjectSettingsService(private val project: Project) :
     PersistentStateComponent<InfluxDbProjectSettings> {
