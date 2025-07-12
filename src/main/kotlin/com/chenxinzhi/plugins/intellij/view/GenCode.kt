@@ -14,6 +14,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
+import com.chenxinzhi.plugins.intellij.services.GenCodeProjectSettingsService
 import com.chenxinzhi.plugins.intellij.utils.*
 import com.intellij.database.access.DatabaseCredentials
 import com.intellij.database.dataSource.LocalDataSource
@@ -31,7 +32,6 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import java.nio.file.Paths
-import kotlin.math.max
 
 /**
  * @author chenxinzhi
@@ -71,11 +71,81 @@ mutableStateOf(null)
 
 var allModule: List<Module>? by
 mutableStateOf(null)
+// 保存状态变化的函数
 
 @Composable
 fun GenCode(project: Project) {
     var buE by remember { mutableStateOf(true) }
     var msg by remember { mutableStateOf("") }
+
+    // 获取持久化设置服务
+    val settingsService = remember { GenCodeProjectSettingsService.getInstance(project) }
+    val settings = remember { settingsService.state }
+    var first by remember { mutableStateOf(true) }
+    val saveSettings = remember {
+        {
+            if (first) {
+                return@remember
+            }
+            settings.menuText = menuState.text.toString()
+            settings.serviceNameText = serviceNameState.text.toString()
+            settings.tablePrefixText = tablePreState.text.toString()
+            settings.webPrefixText = webPreState.text.toString()
+            settings.codeText = code.text.toString()
+            settings.fucCodeText = fucCode.text.toString()
+            settings.packageNameText = packageName.text.toString()
+            settings.frontDirText = frontDir.text.toString()
+            settings.baseMode = baseMode
+            settings.tenantMode = tenantMode
+            settings.useElementUI = useElementUI
+            settings.wrapMode = wrapMode
+            settings.servicePath = nowServicePath ?: ""
+            settings.serviceApiPath = nowServiceApiPath ?: ""
+
+            // 保存数据源和数据库名称（如果存在）
+            nowDataSource?.let { settings.dataSourceName = it.name }
+            nowDataBase?.let { settings.databaseName = it.name }
+            nowTable?.let { settings.tableName = it.name }
+            devModule?.let { settings.devModuleName = it.name }
+        }
+
+    }
+    // 加载持久化状态
+    LaunchedEffect(Unit) {
+        // 加载文本字段状态
+        menuState.setTextAndPlaceCursorAtEnd(settings.menuText)
+        serviceNameState.setTextAndPlaceCursorAtEnd(settings.serviceNameText)
+        tablePreState.setTextAndPlaceCursorAtEnd(settings.tablePrefixText)
+        webPreState.setTextAndPlaceCursorAtEnd(settings.webPrefixText)
+        code.setTextAndPlaceCursorAtEnd(settings.codeText)
+        fucCode.setTextAndPlaceCursorAtEnd(settings.fucCodeText)
+        packageName.setTextAndPlaceCursorAtEnd(settings.packageNameText)
+        frontDir.setTextAndPlaceCursorAtEnd(settings.frontDirText)
+
+        // 加载布尔状态
+        baseMode = settings.baseMode
+        tenantMode = settings.tenantMode
+        useElementUI = settings.useElementUI
+        wrapMode = settings.wrapMode
+
+        // 加载路径状态
+        nowServicePath = settings.servicePath
+        nowServiceApiPath = settings.serviceApiPath
+        first = false
+    }
+
+    // 监听文本字段变化并保存设置
+    LaunchedEffect(menuState.text) { saveSettings() }
+    LaunchedEffect(serviceNameState.text) { saveSettings() }
+    LaunchedEffect(tablePreState.text) { saveSettings() }
+    LaunchedEffect(webPreState.text) { saveSettings() }
+    LaunchedEffect(code.text) { saveSettings() }
+    LaunchedEffect(fucCode.text) { saveSettings() }
+    LaunchedEffect(packageName.text) { saveSettings() }
+    LaunchedEffect(frontDir.text) { saveSettings() }
+
+
+
     Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
 
 
@@ -112,13 +182,14 @@ fun GenCode(project: Project) {
                 }.let {
                     if (it.isNotEmpty()) {
                         isLoad = true
-                        devModule = devModules[devModule?.let { module ->
-                            devModules.indexOfFirst { m -> m.name == module.name }.let { i ->
-                                max(i, 0).apply {
-                                    selectedIndex = this
-                                }
-                            }
-                        } ?: 0]
+                        // 尝试根据保存的名称恢复选择
+                        val savedModuleName = settings.devModuleName
+                        val moduleIndex = if (savedModuleName.isNotEmpty()) {
+                            devModules.indexOfFirst { m -> m.name == savedModuleName }
+                        } else -1
+
+                        selectedIndex = if (moduleIndex >= 0) moduleIndex else 0
+                        devModule = devModules[selectedIndex]
                     }
                     it.ifEmpty {
                         listOf(
@@ -166,13 +237,14 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowDataSource = dataSources[nowDataSource?.let { lds ->
-                                dataSources.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
-                                    max(i, 0).apply {
-                                        selectedIndex = this
-                                    }
-                                }
-                            } ?: 0]
+                            // 尝试根据保存的名称恢复选择
+                            val savedDataSourceName = settings.dataSourceName
+                            val dataSourceIndex = if (savedDataSourceName.isNotEmpty()) {
+                                dataSources.indexOfFirst { ds -> ds.name == savedDataSourceName }
+                            } else -1
+
+                            selectedIndex = if (dataSourceIndex >= 0) dataSourceIndex else 0
+                            nowDataSource = dataSources[selectedIndex]
                         }
                         it.ifEmpty {
                             nowDataSource = null
@@ -189,6 +261,7 @@ fun GenCode(project: Project) {
                 ComboList(dateSourceList, selectedIndex, isLoad) {
                     selectedIndex = it
                     nowDataSource = dataSources[it]
+                    saveSettings()
                 }
 
 
@@ -221,14 +294,14 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowServicePath = it[nowServicePath?.let { module ->
-                                it.indexOfFirst { m -> m.other == module }.let { i ->
-                                    max(i, 0).apply {
-                                        selectedIndex = this
-                                    }
-                                }
-                            } ?: 0].other
+                            // 尝试根据保存的路径恢复选择
+                            val savedServicePath = settings.servicePath
+                            val servicePathIndex = if (savedServicePath.isNotEmpty()) {
+                                it.indexOfFirst { m -> m.other == savedServicePath }
+                            } else -1
 
+                            selectedIndex = if (servicePathIndex >= 0) servicePathIndex else 0
+                            nowServicePath = it[selectedIndex].other
                         }
                         it.ifEmpty {
                             listOf(
@@ -243,6 +316,7 @@ fun GenCode(project: Project) {
                 ComboList(moduleList, selectedIndex, isLoad) {
                     selectedIndex = it
                     nowServicePath = moduleList[selectedIndex].other
+                    saveSettings()
                 }
 
 
@@ -276,14 +350,14 @@ fun GenCode(project: Project) {
                     }.let {
                         if (it.isNotEmpty()) {
                             isLoad = true
-                            nowServiceApiPath = it[nowServiceApiPath?.let { module ->
-                                it.indexOfFirst { m -> m.other == module }.let { i ->
-                                    max(i, 0).apply {
-                                        selectedIndex = this
-                                    }
-                                }
-                            } ?: 0].other
+                            // 尝试根据保存的路径恢复选择
+                            val savedApiPath = settings.serviceApiPath
+                            val apiPathIndex = if (savedApiPath.isNotEmpty()) {
+                                it.indexOfFirst { m -> m.other == savedApiPath }
+                            } else -1
 
+                            selectedIndex = if (apiPathIndex >= 0) apiPathIndex else 0
+                            nowServiceApiPath = it[selectedIndex].other
                         }
                         it.ifEmpty {
                             listOf(
@@ -300,7 +374,7 @@ fun GenCode(project: Project) {
                 ComboList(apiModuleList, selectedIndex, isLoad) {
                     selectedIndex = it
                     nowServiceApiPath = apiModuleList[selectedIndex].other
-
+                    saveSettings()
                 }
 
 
@@ -340,14 +414,14 @@ fun GenCode(project: Project) {
                         }.let {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
-                                    nowDataBase = dataBases[nowDataBase?.let { lds ->
-                                        dataBases.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
-                                            max(i, 0).apply {
-                                                selectedIndex = this
-                                            }
-                                        }
-                                    } ?: 0]
+                                    // 尝试根据保存的名称恢复选择
+                                    val savedDatabaseName = settings.databaseName
+                                    val databaseIndex = if (savedDatabaseName.isNotEmpty()) {
+                                        dataBases.indexOfFirst { ds -> ds.name == savedDatabaseName }
+                                    } else -1
 
+                                    selectedIndex = if (databaseIndex >= 0) databaseIndex else 0
+                                    nowDataBase = dataBases[selectedIndex]
                                 }
                             }
                             it.ifEmpty {
@@ -365,6 +439,7 @@ fun GenCode(project: Project) {
                 ComboList(dateBaseList, selectedIndex, isLoad) {
                     selectedIndex = it
                     nowDataBase = dataBases[it]
+                    saveSettings()
                 }
 
 
@@ -396,14 +471,14 @@ fun GenCode(project: Project) {
                         }.let {
                             isLoad = it.isNotEmpty().apply {
                                 if (this) {
-                                    nowTable = tables[nowTable?.let { lds ->
-                                        tables.indexOfFirst { ds -> ds.name == lds.name }.let { i ->
-                                            max(i, 0).apply {
-                                                selectedIndex = this
-                                            }
-                                        }
-                                    } ?: 0]
+                                    // 尝试根据保存的名称恢复选择
+                                    val savedTableName = settings.tableName
+                                    val tableIndex = if (savedTableName.isNotEmpty()) {
+                                        tables.indexOfFirst { ds -> ds.name == savedTableName }
+                                    } else -1
 
+                                    selectedIndex = if (tableIndex >= 0) tableIndex else 0
+                                    nowTable = tables[selectedIndex]
                                 }
                             }
                             it.ifEmpty {
@@ -420,6 +495,7 @@ fun GenCode(project: Project) {
                 ComboList(tableList, selectedIndex, isLoad) {
                     selectedIndex = it
                     nowTable = tables[it]
+                    saveSettings()
                 }
 
 
@@ -435,7 +511,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = menuState,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -447,7 +523,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = serviceNameState,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -459,7 +535,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = tablePreState,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -474,6 +550,7 @@ fun GenCode(project: Project) {
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(baseMode) {
                     baseMode = it
+                    saveSettings()
                 }
 
 
@@ -484,6 +561,7 @@ fun GenCode(project: Project) {
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(tenantMode) {
                     tenantMode = it
+                    saveSettings()
                 }
 
 
@@ -494,6 +572,7 @@ fun GenCode(project: Project) {
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(useElementUI) {
                     useElementUI = it
+                    saveSettings()
                 }
 
 
@@ -509,7 +588,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = webPreState,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -521,7 +600,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = code,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -533,7 +612,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = fucCode,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
 
@@ -548,6 +627,7 @@ fun GenCode(project: Project) {
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(wrapMode) {
                     wrapMode = it
+                    saveSettings()
                 }
                 Spacer(modifier = Modifier.width(16.dp))
 
@@ -556,7 +636,7 @@ fun GenCode(project: Project) {
                 TextField(
                     state = packageName,
                     modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") },
+                    placeholder = { Text("") }
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -576,6 +656,7 @@ fun GenCode(project: Project) {
                             val virtualFile = FileChooser.chooseFile(descriptor, project, null)
                             virtualFile?.let {
                                 frontDir.setTextAndPlaceCursorAtEnd(it.path)
+                                saveSettings()
                             }
                         }, modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)) {
                             Icon(AllIconsKeys.Nodes.Folder, contentDescription = null)
@@ -593,6 +674,8 @@ fun GenCode(project: Project) {
         Spacer(modifier = Modifier.height(16.dp))
         Row {
             DefaultButton(enabled = buE, onClick = {
+                // 在生成代码前保存所有设置
+                saveSettings()
                 msg = LanguageBundle.messagePointer("tool.gen.compiling").get()
                 buE = false
                 project.compileAndInvokeSingleModule(devModule?.name ?: "", successCallback = {
