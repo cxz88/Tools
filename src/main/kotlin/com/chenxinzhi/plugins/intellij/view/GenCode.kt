@@ -1,3 +1,5 @@
+@file:Suppress("DuplicatedCode")
+
 package com.chenxinzhi.plugins.intellij.view
 
 import androidx.compose.foundation.background
