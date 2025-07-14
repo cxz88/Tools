@@ -37,44 +37,36 @@ import java.nio.file.Paths
  * @author chenxinzhi
  * @date 2025-06-27 09:21:25
  */
-var dataSources: List<LocalDataSource> by mutableStateOf(listOf())
-var devModules: List<Module> by mutableStateOf(listOf())
-var dataBases: List<DasNamespace> by mutableStateOf(listOf())
-var nowDataSource: LocalDataSource? by mutableStateOf(null)
-var nowDataBase: DasNamespace? by mutableStateOf(null)
-var nowServicePath: String? by mutableStateOf(null)
-var nowServiceApiPath: String? by mutableStateOf(null)
-var tables: List<DasObject> by mutableStateOf(listOf())
-var nowTable: DasObject? by mutableStateOf(null)
-val menuState = TextFieldState("")
-val serviceNameState = TextFieldState("")
-val tablePreState = TextFieldState("")
-var baseMode by
-mutableStateOf(false)
-
-var tenantMode by
-mutableStateOf(false)
-
-var useElementUI by
-mutableStateOf(false)
-
-val webPreState = TextFieldState("")
-val code = TextFieldState("")
-val fucCode = TextFieldState("")
-val packageName = TextFieldState("")
-val frontDir = TextFieldState("")
-var wrapMode by
-mutableStateOf(false)
-
-var devModule: Module? by
-mutableStateOf(null)
-
-var allModule: List<Module>? by
-mutableStateOf(null)
-// 保存状态变化的函数
 
 @Composable
 fun GenCode(project: Project) {
+    var dataSources: List<LocalDataSource> by remember { mutableStateOf(listOf()) }
+    var devModules: List<Module> by remember { mutableStateOf(listOf()) }
+    var dataBases: List<DasNamespace> by remember { mutableStateOf(listOf()) }
+    var tables: List<DasObject> by remember { mutableStateOf(listOf()) }
+
+    var nowDataSource: LocalDataSource? by remember { mutableStateOf(null) }
+    var nowDataBase: DasNamespace? by remember { mutableStateOf(null) }
+    var nowTable: DasObject? by remember { mutableStateOf(null) }
+    var devModule: Module? by remember { mutableStateOf(null) }
+    var allModule: List<Module>? by remember { mutableStateOf(null) }
+
+    var nowServicePath: String? by remember { mutableStateOf(null) }
+    var nowServiceApiPath: String? by remember { mutableStateOf(null) }
+
+    val menuState = textFieldState()
+    val serviceNameState = textFieldState()
+    val tablePreState = textFieldState()
+    val webPreState = textFieldState()
+    val code = textFieldState()
+    val fucCode = textFieldState()
+    val packageName = textFieldState()
+    val frontDir = textFieldState()
+
+    var baseMode by remember { mutableStateOf(false) }
+    var tenantMode by remember { mutableStateOf(false) }
+    var useElementUI by remember { mutableStateOf(false) }
+    var wrapMode by remember { mutableStateOf(false) }
     var buE by remember { mutableStateOf(true) }
     var msg by remember { mutableStateOf("") }
 
@@ -110,9 +102,7 @@ fun GenCode(project: Project) {
         }
 
     }
-    // 加载持久化状态
     LaunchedEffect(Unit) {
-        // 加载文本字段状态
         menuState.setTextAndPlaceCursorAtEnd(settings.menuText)
         serviceNameState.setTextAndPlaceCursorAtEnd(settings.serviceNameText)
         tablePreState.setTextAndPlaceCursorAtEnd(settings.tablePrefixText)
@@ -122,19 +112,16 @@ fun GenCode(project: Project) {
         packageName.setTextAndPlaceCursorAtEnd(settings.packageNameText)
         frontDir.setTextAndPlaceCursorAtEnd(settings.frontDirText)
 
-        // 加载布尔状态
         baseMode = settings.baseMode
         tenantMode = settings.tenantMode
         useElementUI = settings.useElementUI
         wrapMode = settings.wrapMode
 
-        // 加载路径状态
         nowServicePath = settings.servicePath
         nowServiceApiPath = settings.serviceApiPath
         first = false
     }
 
-    // 监听文本字段变化并保存设置
     LaunchedEffect(menuState.text) { saveSettings() }
     LaunchedEffect(serviceNameState.text) { saveSettings() }
     LaunchedEffect(tablePreState.text) { saveSettings() }
@@ -755,6 +742,9 @@ fun GenCode(project: Project) {
         }
     }
 }
+
+@Composable
+private fun textFieldState(): TextFieldState = remember { TextFieldState("") }
 
 @OptIn(ExperimentalJewelApi::class)
 @Composable

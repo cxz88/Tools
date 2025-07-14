@@ -4,5 +4,5 @@ data class InfluxDbProjectSettings(
     var influxUrl: String = "",
     var dbName: String = "",
     var user: String = "",
-    var password: String = ""
+    var p: String = ""
 )

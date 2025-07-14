@@ -6,6 +6,7 @@ import com.chenxinzhi.plugins.intellij.services.InfluxDbProjectSettingsService
 import com.chenxinzhi.plugins.intellij.services.InfluxQueryService
 import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
 import com.chenxinzhi.plugins.intellij.utils.onChange
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.project.Project
 import com.intellij.ui.LanguageTextField
@@ -20,11 +21,6 @@ import java.time.format.DateTimeFormatter
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
 
-// 这些字段保持在类外，与您原始代码一致
-val influxUrlField = JTextField("")
-val dbNameField = JTextField("")
-val userField = JTextField("")
-val passwordField = JPasswordField("")
 
 class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
@@ -41,9 +37,12 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
             return editor
         }
     }.apply { preferredSize = Dimension(100, 100) }
+    val influxUrlField = JTextField("")
+    val dbNameField = JTextField("")
+    val userField = JTextField("")
+    val passwordField = JPasswordField("")
 
     @Suppress("unused")
-    // ✅ 将单个JBTable替换为JBTabbedPane，用于容纳多个结果表格
     private val resultTabs = JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT)
 
     private val totalCountLabel = JLabel(LanguageBundle.messagePointer("tool.influxDb.total", 0).get())
@@ -53,26 +52,33 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
     private val pageSize = 50
     val dbManager: InfluxDBManager? = project.getService(InfluxDBManager::class.java)
     private fun saveSettings() {
-        val state = InfluxDbProjectSettingsService.getInstance(project).state
-        state.influxUrl = influxUrlField.text
-        state.dbName = dbNameField.text
-        state.user = userField.text
-        state.password = String(passwordField.password)
+        dbManager?.let {
+            with(it) {
+                load {
+                    val state = InfluxDbProjectSettingsService.getInstance(project).state
+                    state.influxUrl = influxUrlField.text
+                    state.dbName = dbNameField.text
+                    state.user = userField.text
+                    state.p = String(passwordField.password)
+                }
+            }
 
-        dbManager?.load()
+        }
     }
 
     init {
         val state = InfluxDbProjectSettingsService.getInstance(project).state
-        influxUrlField.text = state.influxUrl
-        dbNameField.text = state.dbName
-        userField.text = state.user
-        passwordField.text = state.password
+        invokeLater {
+            influxUrlField.text = state.influxUrl
+            dbNameField.text = state.dbName
+            userField.text = state.user
+            passwordField.text = state.p
 
-        influxUrlField.onChange { saveSettings() }
-        dbNameField.onChange { saveSettings() }
-        userField.onChange { saveSettings() }
-        passwordField.onChange { saveSettings() }
+            influxUrlField.onChange { saveSettings() }
+            dbNameField.onChange { saveSettings() }
+            userField.onChange { saveSettings() }
+            passwordField.onChange { saveSettings() }
+        }
 
         val runButton = JButton(LanguageBundle.messagePointer("tool.influxDb.query").get()).apply {
             preferredSize = Dimension(90, 28)
@@ -83,7 +89,9 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
             val sql = editorField.text.trim()
             if (sql.isNotEmpty()) {
                 val paginatedSql = "$sql LIMIT $pageSize OFFSET ${currentPage * pageSize}"
-                val result = InfluxQueryService.query(paginatedSql)
+                val result = with(InfluxQueryService) {
+                    query(paginatedSql)
+                }
 
                 // ✅ 清除旧的结果，并为每个数据系列（series）创建新的标签页
                 resultTabs.removeAll()
@@ -101,18 +109,16 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
                 } else {
                     // 可选：当没有结果时显示一条消息
                     val noResultsPanel = JPanel(GridBagLayout())
-                    noResultsPanel.add(JLabel("查询未返回任何结果。"))
-                    resultTabs.addTab("Result", noResultsPanel)
+                    noResultsPanel.add(JLabel(LanguageBundle.messagePointer("tool.influxDb.noInformationFound").get()))
+                    resultTabs.addTab(LanguageBundle.messagePointer("tool.influxDb.result").get(), noResultsPanel)
                 }
 
 
-                val totalCount = InfluxQueryService.count(
-                    influxUrlField.text.trim(),
-                    dbNameField.text.trim(),
-                    userField.text.trim(),
-                    String(passwordField.password),
-                    sql
-                )
+                val totalCount = with(InfluxQueryService) {
+                    count(
+                        sql
+                    )
+                }
 
                 totalCountLabel.text = LanguageBundle.messagePointer("tool.influxDb.total", totalCount).get()
                 val totalPages = if (totalCount == 0) 1 else (totalCount + pageSize - 1) / pageSize
@@ -177,7 +183,6 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
         val centerPanel = JPanel(BorderLayout(10, 10)).apply {
             add(topPanel, BorderLayout.NORTH)
-            // ✅ 将选项卡面板添加到布局中，而不是原来的单个滚动面板
             add(resultTabs, BorderLayout.CENTER)
         }
 
@@ -187,11 +192,7 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
         add(bottomPanel, BorderLayout.SOUTH)
     }
 
-    /**
-     * ✅ 重构后的方法，为单个数据系列列表构建TableModel
-     * @param data 单个系列的数据列表
-     * @return DefaultTableModel
-     */
+
     private fun buildTableModelForSeries(data: List<Map<String, String>>): DefaultTableModel {
         if (data.isEmpty()) return DefaultTableModel()
 
@@ -215,17 +216,15 @@ class InfluxDBPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private fun formatTime(utcTime: String): String {
         return try {
-            // 兼容可选的纳秒精度 (e.g., .SSS, .SSSSSS, .SSSSSSSSS)
             val inputFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSSSSSSSS]'Z'")
                 .withZone(ZoneOffset.UTC)
-            // 使用系统默认时区进行显示，对用户更友好
             val outputFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                 .withZone(ZoneId.systemDefault())
 
             val instant = Instant.from(inputFormat.parse(utcTime))
             outputFormat.format(instant)
-        } catch (e: Exception) {
-            utcTime // 如果解析失败，返回原始字符串
+        } catch (_: Exception) {
+            utcTime
         }
     }
 }

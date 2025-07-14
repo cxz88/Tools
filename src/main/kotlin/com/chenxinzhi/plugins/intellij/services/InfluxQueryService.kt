@@ -1,11 +1,7 @@
 package com.chenxinzhi.plugins.intellij.services
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
-import com.chenxinzhi.plugins.intellij.view.dbNameField
-import com.chenxinzhi.plugins.intellij.view.influxUrlField
-import com.chenxinzhi.plugins.intellij.view.passwordField
-import com.chenxinzhi.plugins.intellij.view.userField
-import com.intellij.openapi.command.WriteCommandAction
+import com.chenxinzhi.plugins.intellij.view.InfluxDBPanel
 import com.intellij.openapi.ui.Messages
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
@@ -18,13 +14,13 @@ object InfluxQueryService {
     private val client = OkHttpClient()
 
 
-    fun query(
+    fun InfluxDBPanel.query(
         sql: String,
         url: String = influxUrlField.text,
         db: String = dbNameField.text,
         user: String = userField.text,
         password: String = String(passwordField.password),
-    ): Map<String,List<Map<String, String>>> {
+    ): Map<String, List<Map<String, String>>> {
         try {
             val encodedQuery = URLEncoder.encode(sql, StandardCharsets.UTF_8)
             val fullUrl = "$url/query?db=$db&q=$encodedQuery"
@@ -60,7 +56,7 @@ object InfluxQueryService {
                     try {
                         jSONObject.getJSONObject("tags").toString()
                     } catch (_: Exception) {
-                        ""
+                        LanguageBundle.messagePointer("tool.influxDb.result").get()
                     } to (0 until values.length()).map { i ->
                         val row = values.getJSONArray(i)
                         (0 until columns.length()).associate { j ->
@@ -82,7 +78,7 @@ object InfluxQueryService {
     }
 
 
-    fun count(url: String, db: String, user: String, password: String, originalSql: String): Int {
+    fun InfluxDBPanel.count(originalSql: String): Int {
         try {
             val fromIndex = originalSql.indexOf("from", ignoreCase = true)
             if (fromIndex == -1) return 0
