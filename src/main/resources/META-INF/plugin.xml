@@ -41,13 +41,16 @@
         <notificationGroup id="CxzGroup"
                            displayType="BALLOON"
                            bundle="messages.LanguageBundle" key="notification.group.custom.notification.group"/>
-        <applicationConfigurable 
+        <applicationConfigurable
                 parentId="tools"
                 instance="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
                 id="com.chenxinzhi.plugins.intellij.settings.NamingStyleConfigurable"
-                displayName="Naming Style Settings"/>
+                bundle="messages.LanguageBundle"
+                key="settings.naming.style.display.name"
+        />
 
-        <fileType name="InfluxQL File" implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLFileType"
+        <fileType name="InfluxQL File"
+                  implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.InfluxQLFileType"
                   fieldName="INSTANCE" language="InfluxQL" extensions="influxql"/>
 
         <lang.parserDefinition language="InfluxQL"
@@ -58,16 +61,14 @@
         <completion.contributor language="InfluxQL"
                                 implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.completion.InfluxQLCompletionContributor"/>
 
-        <colorSettingsPage implementation="com.chenxinzhi.plugins.intellij.influxdb.language.highlighter.InfluxQLColorSettingsPage"/>
+        <colorSettingsPage
+                implementation="com.chenxinzhi.plugins.intellij.influxdb.language.highlighter.InfluxQLColorSettingsPage"/>
         <lang.braceMatcher language="InfluxQL"
                            implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLBraceMatcher"/>
-        <!-- ↓↓↓ 添加下面这个新的扩展 ↓↓↓ -->
         <lang.commenter language="InfluxQL"
                         implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.commenter.InfluxQLCommenter"/>
         <lang.quoteHandler language="InfluxQL"
                            implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLQuoteHandler"/>
-
-
 
 
     </extensions>
