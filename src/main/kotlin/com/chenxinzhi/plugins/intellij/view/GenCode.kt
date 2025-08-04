@@ -780,7 +780,7 @@ private fun CheckListTrue(
     callback: (Boolean) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        var index by remember { mutableIntStateOf(if (initValue) 1 else 0) }
+        var index by remember(initValue) { mutableIntStateOf(if (initValue) 1 else 0) }
         LaunchedEffect(index) {
             callback(index == 1)
         }
