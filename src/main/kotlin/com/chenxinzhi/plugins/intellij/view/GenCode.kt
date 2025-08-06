@@ -123,18 +123,22 @@ fun GenCode(project: Project) {
         nowServiceApiPath = settings.serviceApiPath
         first = false
     }
-
-    LaunchedEffect(menuState.text) { saveSettings() }
-    LaunchedEffect(serviceNameState.text) { saveSettings() }
-    LaunchedEffect(tablePreState.text) { saveSettings() }
-    LaunchedEffect(webPreState.text) { saveSettings() }
-    LaunchedEffect(code.text) { saveSettings() }
-    LaunchedEffect(fucCode.text) { saveSettings() }
-    LaunchedEffect(packageName.text) { saveSettings() }
-    LaunchedEffect(frontDir.text) { saveSettings() }
-
-
-
+    LaunchedEffect(
+        menuState.text,
+        serviceNameState.text,
+        tablePreState.text,
+        webPreState.text,
+        code.text,
+        fucCode.text,
+        packageName.text,
+        frontDir.text,
+        baseMode,
+        tenantMode,
+        useElementUI,
+        wrapMode,
+        nowServicePath,
+        nowServiceApiPath
+    ) { saveSettings() }
     Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
 
 
@@ -537,10 +541,8 @@ fun GenCode(project: Project) {
 
                 Text(LanguageBundle.messagePointer("tool.gen.text.basicBusiness").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue(baseMode) {
-                    if (first) {
-                        return@CheckListTrue
-                    }
+                CheckListTrue(baseMode, first) {
+                
                     baseMode = it
                     saveSettings()
                 }
@@ -551,10 +553,8 @@ fun GenCode(project: Project) {
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.tenantModel").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue(tenantMode) {
-                    if (first) {
-                        return@CheckListTrue
-                    }
+                CheckListTrue(tenantMode, first) {
+
                     tenantMode = it
                     saveSettings()
                 }
@@ -565,10 +565,8 @@ fun GenCode(project: Project) {
             Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.useElementUI").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue(useElementUI) {
-                    if (first) {
-                        return@CheckListTrue
-                    }
+                CheckListTrue(useElementUI, first) {
+
                     useElementUI = it
                     saveSettings()
                 }
@@ -623,10 +621,8 @@ fun GenCode(project: Project) {
 
                 Text(LanguageBundle.messagePointer("tool.gen.text.wrapperMode").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue(wrapMode) {
-                    if (first) {
-                        return@CheckListTrue
-                    }
+                CheckListTrue(wrapMode,first) {
+
                     wrapMode = it
                     saveSettings()
                 }
@@ -789,12 +785,15 @@ private fun ComboList(
 @Composable
 private fun CheckListTrue(
     initValue: Boolean,
+    first: Boolean,
     callback: (Boolean) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         var index by remember(initValue) { mutableIntStateOf(if (initValue) 1 else 0) }
-        LaunchedEffect(index) {
-            callback(index == 1)
+        LaunchedEffect(index,first) {
+            if (!first){
+                callback(index == 1)
+            }
         }
         RadioButtonRow(selected = index == 0, onClick = { index = 0 }) {
             Text(LanguageBundle.messagePointer("tool.no").get())
