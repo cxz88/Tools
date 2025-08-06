@@ -538,6 +538,9 @@ fun GenCode(project: Project) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.basicBusiness").get())
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(baseMode) {
+                    if (first) {
+                        return@CheckListTrue
+                    }
                     baseMode = it
                     saveSettings()
                 }
@@ -549,6 +552,9 @@ fun GenCode(project: Project) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.tenantModel").get())
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(tenantMode) {
+                    if (first) {
+                        return@CheckListTrue
+                    }
                     tenantMode = it
                     saveSettings()
                 }
@@ -560,6 +566,9 @@ fun GenCode(project: Project) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.useElementUI").get())
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(useElementUI) {
+                    if (first) {
+                        return@CheckListTrue
+                    }
                     useElementUI = it
                     saveSettings()
                 }
@@ -615,6 +624,9 @@ fun GenCode(project: Project) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.wrapperMode").get())
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(wrapMode) {
+                    if (first) {
+                        return@CheckListTrue
+                    }
                     wrapMode = it
                     saveSettings()
                 }
