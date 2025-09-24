@@ -116,6 +116,7 @@ class CreateClassAction : JavaCreateTemplateInPackageAction<PsiClass?>(
         val project = dir.project
         //弹出包选择对话框
         val dialog = PackageChooserDialog(LanguageBundle.getLazyMessage("choose.package").get(), project)
+        dialog.selectPackage("org.springblade")
         dialog.show()
         return if (dialog.isOK) {
             dialog.selectedPackage?.directories?.firstOrNull()?.let {
