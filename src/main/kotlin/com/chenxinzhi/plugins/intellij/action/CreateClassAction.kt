@@ -40,6 +40,7 @@ class CreateClassAction : JavaCreateTemplateInPackageAction<PsiClass?>(
     IconManager.getInstance().getPlatformIcon(PlatformIcons.Enum),
     true
 ), DumbAware {
+
     override fun buildDialog(project: Project, directory: PsiDirectory, builder: CreateFileFromTemplateDialog.Builder) {
         builder.setTitle(JavaBundle.message("action.create.new.class"))
         val level = PsiUtil.getLanguageLevel(directory)

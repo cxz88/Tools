@@ -10,7 +10,6 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
-import kotlin.jvm.java
 
 class InfluxQLCompletionContributor : CompletionContributor() {
     init {

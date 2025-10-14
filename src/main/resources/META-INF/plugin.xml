@@ -36,6 +36,9 @@
         </action>
     </actions>
     <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="com.chenxinzhi.plugins.intellij.gutter.TableNameGutterProvider"/>
         <toolWindow id="Tools" anchor="bottom" secondary="false" canCloseContents="false"
                     factoryClass="com.chenxinzhi.plugins.intellij.ToolWindowFactory"/>
         <notificationGroup id="CxzGroup"
@@ -71,6 +74,8 @@
                            implementationClass="com.chenxinzhi.plugins.intellij.influxdb.language.matcher.InfluxQLQuoteHandler"/>
 
 
+        <psi.referenceContributor language="JAVA"
+                                  implementation="com.chenxinzhi.plugins.intellij.reference.TableNameReferenceContributor"/>
     </extensions>
 
 </idea-plugin>
