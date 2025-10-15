@@ -17,6 +17,9 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
+import com.intellij.psi.search.FilenameIndex
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.xml.XmlFile
 import java.awt.event.MouseEvent
 
 class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
@@ -176,7 +179,41 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
                 }
             }
             JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiClass)
-            project.notifySuccess(LanguageBundle.message("table.name.select.table.sync.success"))
+
+            val scope = GlobalSearchScope.projectScope(project)
+            val xmlFiles = FilenameIndex.getFilesByName(project, psiClass.name + "Mapper.xml", scope)
+                .filterIsInstance<XmlFile>()
+
+            xmlFiles.forEach { xmlFile ->
+                val rootTag = xmlFile.rootTag ?: return@forEach
+                rootTag.findSubTags("resultMap").forEach { resultMap ->
+
+                    val attributeValue = resultMap.getAttributeValue("type")
+                    if (attributeValue != (psiClass.qualifiedName ?: return@forEach)) {
+                        return@forEach
+                    }
+                    val oldResults = resultMap.findSubTags("result")
+                    oldResults.forEach { it.delete() }
+                    val oldResultsId = resultMap.findSubTags("id")
+                    oldResultsId.forEach { it.delete() }
+
+                    dbColumns.forEach { column ->
+                        val fieldName = CaseFormat.LOWER_UNDERSCORE.to(
+                            CaseFormat.LOWER_CAMEL, column.name
+                        )
+                        val resultTag = resultMap.createChildTag("result", null, null, false)
+                        resultTag.setAttribute("column", column.name)
+                        resultTag.setAttribute("property", fieldName)
+                        resultMap.addSubTag(resultTag, false)
+
+                    }
+                }
+            }
+
+            project.notifySuccess(
+                LanguageBundle.message("table.name.select.table.sync.success")
+
+            )
         }
     }
 
