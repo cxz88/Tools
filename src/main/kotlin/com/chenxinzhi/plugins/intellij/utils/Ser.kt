@@ -1,5 +1,5 @@
-
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
+import com.chenxinzhi.plugins.intellij.utils.notifyError
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.common.base.CaseFormat
 import com.intellij.openapi.application.runReadAction
@@ -100,7 +100,7 @@ fun localizeLiteralArgsUsingPsi(
         }
         val map = literalPairs.map { it.second }
         val result =
-            chunkConcat(map, 500, appKey, appSecret, progressIndicator, "en")
+            chunkConcat(map, 500, appKey, appSecret, progressIndicator, "en", project)
                 .map {
                     it?.lowercase()
                         ?.split("[^a-z0-9]+".toRegex())  // 以非字母数字分割
@@ -145,7 +145,13 @@ fun localizeLiteralArgsUsingPsi(
             progressIndicator.fraction = 0.4
             if (needTranslation.isNotEmpty()) {
                 val result =
-                    chunkConcat(needTranslation.values.toList(), 500, appKey, appSecret, progressIndicator, "ko")
+                    chunkConcat(
+                        needTranslation.values.toList(),
+                        appKey = appKey,
+                        appSecret = appSecret,
+                        progressIndicator = progressIndicator,
+                        project = project
+                    )
                 val size = needTranslation.keys.size
                 needTranslation.keys.forEachIndexed { index, key ->
                     if (progressIndicator.isCanceled) throw CancellationException("")
@@ -176,13 +182,13 @@ fun localizeLiteralArgsUsingPsi(
                     // 只替换字面量节点为 I18nUtil 全限定名调用（避免处理 import）
                     val replacement = "$i18nUtilFqn.getMessage(\"$key\")"
                     runReadAction { literal.parent }.let {
-                        runWriteCommandAction(project,"BatchCxz","cxz$date",{
+                        runWriteCommandAction(project, "BatchCxz", "cxz$date", {
                             val newExpr = factory.createExpressionFromText(replacement, literal)
                             literal.replace(newExpr) // 仅替换字面量节点
                             // 3. 自动缩短类全名
                             val javaCodeStyleManager = JavaCodeStyleManager.getInstance(project)
                             javaCodeStyleManager.shortenClassReferences(it)
-                        },runReadAction {
+                        }, runReadAction {
                             it.containingFile
                         })
                     }
@@ -193,15 +199,22 @@ fun localizeLiteralArgsUsingPsi(
                 val findFileByIoFile1 = runReadAction {
                     LocalFileSystem.getInstance().findFileByIoFile(koFile)
                 }
-                runWriteCommandAction(project,"BatchCxz","cxz$date",{
-                    // 保存 properties 文件
-                    findFileByIoFile
-                        ?.let {
-                            savePropertiesReadable(project, it, defaultProps) }
+                runWriteCommandAction(
+                    project,
+                    "BatchCxz",
+                    "cxz$date",
+                    {
+                        // 保存 properties 文件
+                        findFileByIoFile
+                            ?.let {
+                                savePropertiesReadable(project, it, defaultProps)
+                            }
 
-                    findFileByIoFile1
-                        ?.let { savePropertiesReadable(project, it, koProps) }
-                },runReadAction { findFileByIoFile?.findPsiFile(project) },runReadAction { findFileByIoFile1?.findPsiFile(project) })
+                        findFileByIoFile1
+                            ?.let { savePropertiesReadable(project, it, koProps) }
+                    },
+                    runReadAction { findFileByIoFile?.findPsiFile(project) },
+                    runReadAction { findFileByIoFile1?.findPsiFile(project) })
                 // 刷新 VFS 以便 IDEA 看到文件变化
                 LocalFileSystem.getInstance().refreshAndFindFileByIoFile(defaultFile)
                     ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
@@ -310,7 +323,8 @@ suspend fun chunkConcat(
     appKey: String = "",
     appSecret: String = "",
     progressIndicator: ProgressIndicator,
-    to: String = "ko"
+    to: String = "ko",
+    project: Project
 ): List<String?> = coroutineScope {
     val toList = strings.chunked(maxLength).toList()
     val f1 = toList.size
@@ -329,7 +343,9 @@ suspend fun chunkConcat(
                     } else listOf(it1 as? String)
                 }
             }
-        } ?: throw Exception()).apply {
+        } ?: throw CancellationException().apply {
+            project.notifyError(LanguageBundle.messagePointer("tran.translating.err").get())
+        }).apply {
             if (f1 == 1) {
                 return@apply
             }

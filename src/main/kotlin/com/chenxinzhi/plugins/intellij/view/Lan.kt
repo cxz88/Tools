@@ -89,7 +89,7 @@ fun Lan(project: Project) {
                 first = false
             }
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("${LanguageBundle.messagePointer("tran.app.key").get()}: ")
                 Spacer(Modifier.width(8.dp))
                 TextField(
@@ -99,7 +99,7 @@ fun Lan(project: Project) {
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("${LanguageBundle.messagePointer("tran.app.secret").get()}: ")
                 Spacer(Modifier.width(8.dp))
                 TextField(
