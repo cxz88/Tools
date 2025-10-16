@@ -332,7 +332,13 @@ suspend fun chunkConcat(
         val message = TranslateDemo.tran(text.toTypedArray(), "zh-CHS", to, appKey, appSecret)
         progressIndicator.fraction = index.toDouble() / f1
         val jacksonObjectMapper = jacksonObjectMapper()
-        (jacksonObjectMapper.readValue(message, Map::class.java)?.let {
+        val readValue = try {
+            jacksonObjectMapper.readValue(message, Map::class.java)
+        } catch (_: Exception) {
+            project.notifyError(LanguageBundle.messagePointer("tran.translating.err").get())
+            throw CancellationException()
+        }
+        (readValue?.let {
             it.let { map ->
                 map["translateResults"]?.let { it1 ->
                     if (it1 is List<*>) {
