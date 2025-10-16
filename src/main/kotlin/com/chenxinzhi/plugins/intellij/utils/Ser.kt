@@ -330,6 +330,9 @@ suspend fun chunkConcat(
                 }
             }
         } ?: throw Exception()).apply {
+            if (f1 == 1) {
+                return@apply
+            }
             delay(1000)
         }
 
