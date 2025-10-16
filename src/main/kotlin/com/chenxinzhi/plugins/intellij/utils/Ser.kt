@@ -13,6 +13,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.search.GlobalSearchScope
@@ -164,8 +165,6 @@ fun localizeLiteralArgsUsingPsi(
         return@runLocalizationTask {
             val factory = JavaPsiFacade.getInstance(project).elementFactory
             val f1 = literalPairs.size
-
-
             try {
                 literalPairs.forEachIndexed { index, (literal, key) ->
                     if (progressIndicator.isCanceled) {
@@ -177,22 +176,32 @@ fun localizeLiteralArgsUsingPsi(
                     // 只替换字面量节点为 I18nUtil 全限定名调用（避免处理 import）
                     val replacement = "$i18nUtilFqn.getMessage(\"$key\")"
                     runReadAction { literal.parent }.let {
-                        runWriteCommandAction(project) {
+                        runWriteCommandAction(project,"BatchCxz","cxz$date",{
                             val newExpr = factory.createExpressionFromText(replacement, literal)
                             literal.replace(newExpr) // 仅替换字面量节点
                             // 3. 自动缩短类全名
                             val javaCodeStyleManager = JavaCodeStyleManager.getInstance(project)
                             javaCodeStyleManager.shortenClassReferences(it)
-                        }
+                        },runReadAction {
+                            it.containingFile
+                        })
                     }
                 }
-                runWriteCommandAction(project){
-                    // 保存 properties 文件
+                val findFileByIoFile = runReadAction {
                     LocalFileSystem.getInstance().findFileByIoFile(defaultFile)
-                        ?.let { savePropertiesReadable(project, it, defaultProps) }
-                    LocalFileSystem.getInstance().findFileByIoFile(koFile)
-                        ?.let { savePropertiesReadable(project, it, koProps) }
                 }
+                val findFileByIoFile1 = runReadAction {
+                    LocalFileSystem.getInstance().findFileByIoFile(koFile)
+                }
+                runWriteCommandAction(project,"BatchCxz","cxz$date",{
+                    // 保存 properties 文件
+                    findFileByIoFile
+                        ?.let {
+                            savePropertiesReadable(project, it, defaultProps) }
+
+                    findFileByIoFile1
+                        ?.let { savePropertiesReadable(project, it, koProps) }
+                },runReadAction { findFileByIoFile?.findPsiFile(project) },runReadAction { findFileByIoFile1?.findPsiFile(project) })
                 // 刷新 VFS 以便 IDEA 看到文件变化
                 LocalFileSystem.getInstance().refreshAndFindFileByIoFile(defaultFile)
                     ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
