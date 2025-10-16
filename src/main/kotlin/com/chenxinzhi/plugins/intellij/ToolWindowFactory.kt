@@ -4,6 +4,7 @@ import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
 import com.chenxinzhi.plugins.intellij.view.GenCode
 import com.chenxinzhi.plugins.intellij.view.InfluxDBPanel
+import com.chenxinzhi.plugins.intellij.view.Lan
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsContexts.TabTitle
@@ -24,6 +25,10 @@ class ToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         toolWindow.addComposeTab(LanguageBundle.messagePointer("tool.gen.name").get(), isLockable = false) {
             GenCode(project)
+        }
+
+        toolWindow.addComposeTab(LanguageBundle.messagePointer("tran").get(), isLockable = false) {
+            Lan(project)
         }
         val panel = InfluxDBPanel(project)
         toolWindow.addSwingTab(panel, LanguageBundle.messagePointer("tool.influxDb.name").get())

@@ -542,7 +542,7 @@ fun GenCode(project: Project) {
                 Text(LanguageBundle.messagePointer("tool.gen.text.basicBusiness").get())
                 Spacer(Modifier.width(8.dp))
                 CheckListTrue(baseMode, first) {
-                
+
                     baseMode = it
                     saveSettings()
                 }
@@ -621,7 +621,7 @@ fun GenCode(project: Project) {
 
                 Text(LanguageBundle.messagePointer("tool.gen.text.wrapperMode").get())
                 Spacer(Modifier.width(8.dp))
-                CheckListTrue(wrapMode,first) {
+                CheckListTrue(wrapMode, first) {
 
                     wrapMode = it
                     saveSettings()
@@ -754,11 +754,11 @@ fun GenCode(project: Project) {
 }
 
 @Composable
-private fun textFieldState(): TextFieldState = remember { TextFieldState("") }
+fun textFieldState(): TextFieldState = remember { TextFieldState("") }
 
 @OptIn(ExperimentalJewelApi::class)
 @Composable
-private fun ComboList(
+fun ComboList(
     data: List<GenData>, selectedIndex: Int, dataSourceIsLoad: Boolean, indexChange: (Int) -> Unit
 ) {
     Spacer(modifier = Modifier.width(8.dp))
@@ -790,8 +790,8 @@ private fun CheckListTrue(
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         var index by remember(initValue) { mutableIntStateOf(if (initValue) 1 else 0) }
-        LaunchedEffect(index,first) {
-            if (!first){
+        LaunchedEffect(index, first) {
+            if (!first) {
                 callback(index == 1)
             }
         }
@@ -803,4 +803,4 @@ private fun CheckListTrue(
     }
 }
 
-data class GenData(val name: String, val icon: IconKey, val other: String = "")
+data class GenData(val name: String, val icon: IconKey, val other: String = "", val module: Module? = null)
