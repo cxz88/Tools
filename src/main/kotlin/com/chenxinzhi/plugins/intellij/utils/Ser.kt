@@ -2,8 +2,11 @@ import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.utils.notifyError
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.common.base.CaseFormat
+import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -23,7 +26,6 @@ import com.youdao.aicloud.translate.TranslateDemo
 import kotlinx.coroutines.*
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.time.LocalDateTime
 
 
@@ -57,11 +59,11 @@ fun localizeLiteralArgsUsingPsi(
         val koFile = File(modulePath, "$resourceDirRelative/${bundleBaseName}_ko_KR.properties")
         if (progressIndicator.isCanceled) throw CancellationException("")
         val defaultProps = withContext(Dispatchers.IO) {
-            loadPropertiesReadable(defaultFile)
+            loadPropertiesReadable(defaultFile, project)
         }
         if (progressIndicator.isCanceled) throw CancellationException("")
         val koProps = withContext(Dispatchers.IO) {
-            loadPropertiesReadable(koFile)
+            loadPropertiesReadable(koFile, project)
         }
 
         // 收集将要替换的字面量节点与对应 key
@@ -234,10 +236,31 @@ fun localizeLiteralArgsUsingPsi(
 }
 
 /** 以可读 UTF-8 格式加载 properties（如果文件不存在返回空 map） */
-private fun loadPropertiesReadable(file: File): MutableMap<String, String> {
+private fun loadPropertiesReadable(file: File, project: Project): MutableMap<String, String> {
     val map = LinkedHashMap<String, String>()
     if (!file.exists()) return map
-    val lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
+    val vFile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(file) ?: return map
+    val psiFile = ApplicationManager.getApplication().runReadAction<PsiFile?> {
+        PsiManager.getInstance(project).findFile(vFile)
+    } ?: return map
+
+    if (psiFile is PropertiesFile) {
+        ApplicationManager.getApplication().runReadAction {
+            for (prop in psiFile.properties) {
+                val key = prop.key ?: prop.name ?: continue
+                val value = prop.value ?: ""
+                map[key] = value
+            }
+        }
+        return map
+    }
+    val lines = ApplicationManager.getApplication().runReadAction<List<String>> {
+        val doc = FileDocumentManager.getInstance().getDocument(vFile)
+        doc?.text?.lines()
+            ?: java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
+    }
+
+
     for (line in lines) {
         val l = line.trim()
         if (l.isEmpty() || l.startsWith("#") || !l.contains("=")) continue
@@ -246,6 +269,8 @@ private fun loadPropertiesReadable(file: File): MutableMap<String, String> {
         val v = l.substring(idx + 1).trim()
         map[k] = v
     }
+
+
     return map
 }
 
