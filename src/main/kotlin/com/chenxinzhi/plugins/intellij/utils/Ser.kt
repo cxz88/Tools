@@ -5,11 +5,14 @@ import com.google.common.base.CaseFormat
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -41,17 +44,21 @@ fun localizeLiteralArgsUsingPsi(
     appSecret: String = "",
     appKey: String = ""
 ) {
-    runLocalizationTask(project) { progressIndicator, date ->
+    runLocalizationTask(project) { progressIndicator ->
 
         progressIndicator.isIndeterminate = false
         progressIndicator.text = LanguageBundle.messagePointer("tran.scanning").get()
         val psiClass =
-            JavaPsiFacade.getInstance(project).findClass(fqcnOfException, GlobalSearchScope.allScope(project))
+            runReadAction {
+                JavaPsiFacade.getInstance(project).findClass(fqcnOfException, GlobalSearchScope.allScope(project))
+            }
                 ?: return@runLocalizationTask {}
         if (progressIndicator.isCanceled) throw CancellationException("")
         // 查找所有引用（包括 new 表达式）
         val refs =
-            ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+            runReadAction {
+                ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+            }
 
         if (progressIndicator.isCanceled) throw CancellationException("")
         if (refs.isEmpty()) return@runLocalizationTask {}
@@ -82,18 +89,18 @@ fun localizeLiteralArgsUsingPsi(
             progressIndicator.fraction = index.toDouble() / f
             // 只关心 PsiNewExpression（new ...(...)）
             if (parent is PsiNewExpression) {
-                val argList = parent.argumentList ?: return@forEachIndexed
+                val argList = runReadAction { parent.argumentList } ?: return@forEachIndexed
                 val expressions =
-                    argList.expressions
+                    runReadAction { argList.expressions }
 
                 val text =
-                    parent.text
+                    runReadAction { parent.text }
 
                 progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.scanning").get()} $text"
                 // 遍历每个参数，找到纯字符串字面量
                 for (expr in expressions) {
                     if (expr is PsiLiteralExpression) {
-                        val v = expr.value as? String ?: continue
+                        val v = runReadAction { expr.value } as? String ?: continue
                         if (v.isBlank()) continue
                         literalPairs.add(expr to v)
                     }
@@ -121,7 +128,7 @@ fun localizeLiteralArgsUsingPsi(
                 progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.translating.name").get()} $v"
                 progressIndicator.fraction = (index.toDouble() / size2)
                 generateKeyFromText(
-                    PsiTreeUtil.getParentOfType(expr, PsiClass::class.java)?.qualifiedName
+                    runReadAction { PsiTreeUtil.getParentOfType(expr, PsiClass::class.java) }?.qualifiedName
                         ?: "", v
                 )
             })
@@ -137,7 +144,7 @@ fun localizeLiteralArgsUsingPsi(
             progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.processing").get()} $key"
             progressIndicator.fraction = (index / size1) * 0.4
             if (progressIndicator.isCanceled) throw CancellationException("")
-            val text = literal.value as? String ?: return@forEachIndexed
+            val text = runReadAction { literal.value } as? String ?: return@forEachIndexed
             if (!defaultProps.containsKey(key)) defaultProps[key] = text
             // 请求api服务
             if (!koProps.containsKey(key)) {
@@ -166,11 +173,12 @@ fun localizeLiteralArgsUsingPsi(
             }
         }
         progressIndicator.fraction = 1.0
-        progressIndicator.text = LanguageBundle.messagePointer("tran.replacing.translate").get()
-        progressIndicator.fraction = 0.0
-        progressIndicator.text2 = null
         // 执行替换与写文件必须在 write command 中
-        return@runLocalizationTask {
+        return@runLocalizationTask { progressIndicator ->
+            progressIndicator.isIndeterminate = false
+            progressIndicator.text = LanguageBundle.messagePointer("tran.replacing.translate").get()
+            progressIndicator.fraction = 0.0
+            progressIndicator.text2 = null
             runWriteCommandAction(project) {
                 CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
                 try {
@@ -233,19 +241,22 @@ private fun loadPropertiesReadable(file: File, project: Project): MutableMap<Str
             ?: return map
 
     if (psiFile is PropertiesFile) {
-
-        for (prop in psiFile.properties) {
-            val key = prop.key ?: prop.name ?: continue
-            val value = prop.value ?: ""
-            map[key] = value
+        runReadAction {
+            for (prop in psiFile.properties) {
+                val key = prop.key ?: prop.name ?: continue
+                val value = prop.value ?: ""
+                map[key] = value
+            }
         }
 
         return map
     }
     val doc = FileDocumentManager.getInstance().getDocument(vFile)
     val lines =
-        doc?.text?.lines()
-            ?: java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
+        runReadAction {
+            doc?.text?.lines()
+                ?: java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
+        }
 
 
 
@@ -298,20 +309,45 @@ private fun generateKeyFromText(fqcn: String, text: String): String {
 }
 
 
-fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator, String) -> (() -> Unit)) {
-    (ApplicationManager.getApplication() as ApplicationImpl)
-        .runWriteActionWithCancellableProgressInDispatchThread(
-            "${LanguageBundle.messagePointer("tran.replacing.translate").get()} ServiceException",
-            project,
-            null,
-            Consumer { indicator: ProgressIndicator? ->
+fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator) -> ((ProgressIndicator) -> Unit)) {
+
+    ProgressManager.getInstance().run(object : Task.Modal(
+        project,
+        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} ServiceException...",
+        true
+    ) {
+        var b: ((ProgressIndicator) -> Unit) = {}
+        override fun run(indicator: ProgressIndicator) {
+            try {
                 runBlocking {
-                    task(indicator!!, "${System.currentTimeMillis()}").apply {
+                    try {
+                        b = task(indicator)
+                    } finally {
+                    }
 
 
-                    }()
                 }
-            })
+
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        override fun onFinished() {
+            (ApplicationManager.getApplication() as ApplicationImpl)
+                .runWriteActionWithCancellableProgressInDispatchThread(
+                    "${LanguageBundle.messagePointer("tran.replacing.translate").get()} ServiceException",
+                    project,
+                    null,
+                    Consumer { indicator: ProgressIndicator ->
+                        runBlocking {
+                            b(indicator)
+                        }
+                    })
+        }
+    })
+
 }
 
 
