@@ -5,6 +5,7 @@ import com.google.common.base.CaseFormat
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
@@ -171,6 +172,7 @@ fun localizeLiteralArgsUsingPsi(
         // 执行替换与写文件必须在 write command 中
         return@runLocalizationTask {
             runWriteCommandAction(project) {
+                CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
                 try {
                     val factory = JavaPsiFacade.getInstance(project).elementFactory
                     val f1 = literalPairs.size
@@ -303,9 +305,11 @@ fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator, Stri
             project,
             null,
             Consumer { indicator: ProgressIndicator? ->
-
                 runBlocking {
-                    task(indicator!!, "${System.currentTimeMillis()}")()
+                    task(indicator!!, "${System.currentTimeMillis()}").apply {
+
+
+                    }()
                 }
             })
 }
