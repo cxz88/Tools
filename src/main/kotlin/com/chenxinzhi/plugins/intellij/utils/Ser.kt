@@ -128,7 +128,7 @@ fun localizeLiteralArgsUsingPsi(
                 progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.translating.name").get()} $v"
                 progressIndicator.fraction = (index.toDouble() / size2)
                 generateKeyFromText(
-                    runReadAction { PsiTreeUtil.getParentOfType(expr, PsiClass::class.java) }?.qualifiedName
+                    runReadAction { PsiTreeUtil.getParentOfType(expr, PsiClass::class.java)?.qualifiedName }
                         ?: "", v
                 )
             })
