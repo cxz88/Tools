@@ -14,6 +14,7 @@ import com.intellij.database.util.DasUtil
 import com.intellij.database.util.DbUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -136,15 +137,17 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
                                 if (selectedSchemaObject == null) {
                                     return super.onChosen(selectedSchema, finalChoice)
                                 }
-
-                                // 执行刷新和同步逻辑
-                                refreshDatabaseAndSync(
-                                    project,
-                                    selectedSchemaObject,
-                                    tableName,
-                                    psiClass
-                                )
+                                invokeLater {
+                                    refreshDatabaseAndSync(
+                                        project,
+                                        selectedSchemaObject,
+                                        tableName,
+                                        psiClass
+                                    )
+                                }
                                 return super.onChosen(selectedSchema, finalChoice)
+
+
                             }
                         }
                     }
@@ -184,6 +187,7 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
 
         val dbColumns = targetTable.getDasChildren(ObjectKind.COLUMN).toList()
         val factory = JavaPsiFacade.getElementFactory(project)
+
         (ApplicationManager.getApplication() as ApplicationImpl)
             .runWriteActionWithCancellableProgressInDispatchThread(
                 LanguageBundle.messagePointer("tran.processing").get(),
@@ -270,6 +274,7 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
 
                 }
             }
+
 
     }
 
