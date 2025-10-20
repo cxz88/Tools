@@ -13,6 +13,7 @@ import com.intellij.database.psi.DbDataSourceImpl
 import com.intellij.database.util.DasUtil
 import com.intellij.database.util.DbUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.impl.ApplicationImpl
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -183,85 +184,93 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
 
         val dbColumns = targetTable.getDasChildren(ObjectKind.COLUMN).toList()
         val factory = JavaPsiFacade.getElementFactory(project)
-        runWriteCommandAction(project) {
-            val allInheritedFields = mutableSetOf<String>()
-            var currentClass = psiClass.superClass
-            while (currentClass != null) {
-                allInheritedFields.addAll(currentClass.fields.map { it.name })
-                currentClass = currentClass.superClass
-            }
-
-            val existingFields = psiClass.fields.associateBy { it.name }
-
-            existingFields.forEach { (fieldName, field) ->
-                if (fieldName == "serialVersionUID") {
-                    return@forEach
-                }
-                if (dbColumns.none {
-                        CaseFormat.LOWER_UNDERSCORE.to(
-                            CaseFormat.LOWER_CAMEL, it.name
-                        ).equals(fieldName, ignoreCase = true)
-                    }) {
-                    field.delete()
-                }
-            }
-
-            dbColumns.forEach { column ->
-                val fieldName = CaseFormat.LOWER_UNDERSCORE.to(
-                    CaseFormat.LOWER_CAMEL, column.name
-                )
-                if (!allInheritedFields.contains(fieldName) && !existingFields.containsKey(fieldName)) {
-                    val comment = column.comment ?: column.name
-                    (column as? DbColumn)?.dasType?.toDataType()?.let {
-                        val fieldText = """
-                        @io.swagger.annotations.ApiModelProperty(value = "$comment")
-                        @com.baomidou.mybatisplus.annotation.TableField("${column.name}")
-                        private ${getJavaType(it)} $fieldName;
-                    """.trimIndent()
-
-                        val field = factory.createFieldFromText(fieldText, psiClass)
-                        psiClass.add(field)
+        (ApplicationManager.getApplication() as ApplicationImpl)
+            .runWriteActionWithCancellableProgressInDispatchThread(
+                LanguageBundle.messagePointer("tran.processing").get(),
+                project, null
+            ) {
+                runWriteCommandAction(project) {
+                    val allInheritedFields = mutableSetOf<String>()
+                    var currentClass = psiClass.superClass
+                    while (currentClass != null) {
+                        allInheritedFields.addAll(currentClass.fields.map { it.name })
+                        currentClass = currentClass.superClass
                     }
 
-                }
-            }
-            JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiClass)
+                    val existingFields = psiClass.fields.associateBy { it.name }
 
-            val scope = GlobalSearchScope.projectScope(project)
-            val xmlFiles = FilenameIndex.getFilesByName(project, psiClass.name + "Mapper.xml", scope)
-                .filterIsInstance<XmlFile>()
-
-            xmlFiles.forEach { xmlFile ->
-                val rootTag = xmlFile.rootTag ?: return@forEach
-                rootTag.findSubTags("resultMap").forEach { resultMap ->
-
-                    val attributeValue = resultMap.getAttributeValue("type")
-                    if (attributeValue != (psiClass.qualifiedName ?: return@forEach)) {
-                        return@forEach
+                    existingFields.forEach { (fieldName, field) ->
+                        if (fieldName == "serialVersionUID") {
+                            return@forEach
+                        }
+                        if (dbColumns.none {
+                                CaseFormat.LOWER_UNDERSCORE.to(
+                                    CaseFormat.LOWER_CAMEL, it.name
+                                ).equals(fieldName, ignoreCase = true)
+                            }) {
+                            field.delete()
+                        }
                     }
-                    val oldResults = resultMap.findSubTags("result")
-                    oldResults.forEach { it.delete() }
-                    val oldResultsId = resultMap.findSubTags("id")
-                    oldResultsId.forEach { it.delete() }
 
                     dbColumns.forEach { column ->
                         val fieldName = CaseFormat.LOWER_UNDERSCORE.to(
                             CaseFormat.LOWER_CAMEL, column.name
                         )
-                        val resultTag = resultMap.createChildTag("result", null, null, false)
-                        resultTag.setAttribute("column", column.name)
-                        resultTag.setAttribute("property", fieldName)
-                        resultMap.addSubTag(resultTag, false)
+                        if (!allInheritedFields.contains(fieldName) && !existingFields.containsKey(fieldName)) {
+                            val comment = column.comment ?: column.name
+                            (column as? DbColumn)?.dasType?.toDataType()?.let {
+                                val fieldText = """
+                        @io.swagger.annotations.ApiModelProperty(value = "$comment")
+                        @com.baomidou.mybatisplus.annotation.TableField("${column.name}")
+                        private ${getJavaType(it)} $fieldName;
+                    """.trimIndent()
 
+                                val field = factory.createFieldFromText(fieldText, psiClass)
+                                psiClass.add(field)
+                            }
+
+                        }
                     }
+                    JavaCodeStyleManager.getInstance(project).shortenClassReferences(psiClass)
+
+                    val scope = GlobalSearchScope.projectScope(project)
+                    val xmlFiles = FilenameIndex.getFilesByName(project, psiClass.name + "Mapper.xml", scope)
+                        .filterIsInstance<XmlFile>()
+
+                    xmlFiles.forEach { xmlFile ->
+                        val rootTag = xmlFile.rootTag ?: return@forEach
+                        rootTag.findSubTags("resultMap").forEach { resultMap ->
+
+                            val attributeValue = resultMap.getAttributeValue("type")
+                            if (attributeValue != (psiClass.qualifiedName ?: return@forEach)) {
+                                return@forEach
+                            }
+                            val oldResults = resultMap.findSubTags("result")
+                            oldResults.forEach { it.delete() }
+                            val oldResultsId = resultMap.findSubTags("id")
+                            oldResultsId.forEach { it.delete() }
+
+                            dbColumns.forEach { column ->
+                                val fieldName = CaseFormat.LOWER_UNDERSCORE.to(
+                                    CaseFormat.LOWER_CAMEL, column.name
+                                )
+                                val resultTag = resultMap.createChildTag("result", null, null, false)
+                                resultTag.setAttribute("column", column.name)
+                                resultTag.setAttribute("property", fieldName)
+                                resultMap.addSubTag(resultTag, false)
+
+                            }
+                        }
+                    }
+
+                    project.notifySuccess(
+                        LanguageBundle.message("table.name.select.table.sync.success")
+
+                    )
+
                 }
             }
 
-            project.notifySuccess(
-                LanguageBundle.message("table.name.select.table.sync.success")
-
-            )
-        }
     }
 
     private fun getJavaType(column: DataType): String {

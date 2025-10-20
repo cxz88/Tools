@@ -1,3 +1,4 @@
+
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.utils.notifyError
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -13,7 +14,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
@@ -30,7 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.util.function.Consumer
 
 
 fun localizeLiteralArgsUsingPsi(
@@ -338,12 +337,12 @@ fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator) -> (
                 .runWriteActionWithCancellableProgressInDispatchThread(
                     "${LanguageBundle.messagePointer("tran.replacing.translate").get()} ServiceException",
                     project,
-                    null,
-                    Consumer { indicator: ProgressIndicator ->
-                        runBlocking {
-                            b(indicator)
-                        }
-                    })
+                    null
+                ) { indicator: ProgressIndicator ->
+                    runBlocking {
+                        b(indicator)
+                    }
+                }
         }
     })
 
