@@ -2,6 +2,7 @@ package com.chenxinzhi.plugins.intellij.reference
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.utils.notifyError
+import com.intellij.database.console.JdbcConsoleProvider
 import com.intellij.database.editor.DatabaseEditorHelper
 import com.intellij.database.model.ObjectKind
 import com.intellij.database.psi.DbDataSourceImpl
@@ -26,6 +27,7 @@ class TableNameNavigableElement(
     override fun getName(): String {
         return tableName
     }
+
     override fun getParent(): PsiElement = parent
 
     override fun navigate(requestFocus: Boolean) {
@@ -39,6 +41,21 @@ class TableNameNavigableElement(
     private fun showDataSourceSelectionDialog() {
         val project = parent.project
         ApplicationManager.getApplication().invokeLater {
+            parent.containingFile.virtualFile?.let { file ->
+                val console = JdbcConsoleProvider.getValidConsole(project, file)
+                val dataSources = DbUtil.getDataSources(project).filterIsInstance<DbDataSourceImpl>()
+                dataSources.find { it.name == console?.dataSource?.name }?.let {
+                    it.getDasChildren(ObjectKind.SCHEMA).toList().find { dbElement ->
+                        dbElement.name == console?.searchPath?.current?.name
+                    }?.let { schema ->
+                        navigate(schema, tableName)
+                        return@invokeLater
+                    }
+
+                }
+
+
+            }
             val dataSources = DbUtil.getDataSources(project).filterIsInstance<DbDataSourceImpl>()
             if (dataSources.isEmpty()) {
                 return@invokeLater
@@ -46,7 +63,8 @@ class TableNameNavigableElement(
             // 创建数据源选择弹窗
             val dataSourceNames = dataSources.map { it.name }
             val popupStep =
-                object : BaseListPopupStep<String>(LanguageBundle.message("table.name.select.datasource"), dataSourceNames) {
+                object :
+                    BaseListPopupStep<String>(LanguageBundle.message("table.name.select.datasource"), dataSourceNames) {
                     override fun onChosen(
                         selectedValue: String?,
                         finalChoice: Boolean
@@ -72,7 +90,10 @@ class TableNameNavigableElement(
 
                         // 返回数据库选择步骤
                         val schemaNames = schemas.map { it.name }
-                        return object : BaseListPopupStep<String>(LanguageBundle.message("table.name.select.database"), schemaNames) {
+                        return object : BaseListPopupStep<String>(
+                            LanguageBundle.message("table.name.select.database"),
+                            schemaNames
+                        ) {
                             override fun onChosen(
                                 selectedSchema: String?,
                                 finalChoice: Boolean

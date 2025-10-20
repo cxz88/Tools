@@ -5,10 +5,12 @@ import com.chenxinzhi.plugins.intellij.utils.notifyError
 import com.chenxinzhi.plugins.intellij.utils.notifySuccess
 import com.google.common.base.CaseFormat
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
+import com.intellij.database.console.JdbcConsoleProvider
 import com.intellij.database.model.DataType
 import com.intellij.database.model.ObjectKind
 import com.intellij.database.psi.DbColumn
 import com.intellij.database.psi.DbDataSourceImpl
+import com.intellij.database.util.DasUtil
 import com.intellij.database.util.DbUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
@@ -28,6 +30,51 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
         val psiClass = element.context as? PsiClass ?: return
 
         ApplicationManager.getApplication().invokeLater {
+            element.containingFile.virtualFile?.let { file ->
+                val console = JdbcConsoleProvider.getValidConsole(project, file)
+                val dataSources = DbUtil.getDataSources(project).filterIsInstance<DbDataSourceImpl>()
+                dataSources.find { it.name == console?.dataSource?.name }?.let {
+                    it.getDasChildren(ObjectKind.SCHEMA).toList().find { dbElement ->
+                        dbElement.name == console?.searchPath?.current?.name
+                    }?.let { schema ->
+                        psiClass.getAnnotation("com.baomidou.mybatisplus.annotation.TableName")
+                            ?.findDeclaredAttributeValue("value")?.text?.let { tableName ->
+                                refreshDatabaseAndSync(
+                                    project,
+                                    schema,
+                                    tableName,
+                                    psiClass
+                                )
+                                return@invokeLater
+                            }
+                    }
+
+                }
+
+
+            }
+            element.containingFile.virtualFile?.let { file ->
+                val console = JdbcConsoleProvider.getValidConsole(project, file)
+                console?.dataSource?.let {
+                    DasUtil.getSchemas(it).toList()
+                        .find { table -> table.name == console.searchPath?.current?.name }
+                }?.let { selectedSchemaObject ->
+                    psiClass.getAnnotation("com.baomidou.mybatisplus.annotation.TableName")
+                        ?.findDeclaredAttributeValue("value")?.text?.let { tableName ->
+                            refreshDatabaseAndSync(
+                                project,
+                                selectedSchemaObject,
+                                tableName,
+                                psiClass
+                            )
+                            return@invokeLater
+                        }
+
+                }
+
+
+            }
+
             val dataSources = DbUtil.getDataSources(project).filterIsInstance<DbDataSourceImpl>()
 
             // 数据源选择对话框

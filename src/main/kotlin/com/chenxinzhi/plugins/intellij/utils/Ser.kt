@@ -222,7 +222,6 @@ fun localizeLiteralArgsUsingPsi(
                         ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
                     progressIndicator.text2 = LanguageBundle.messagePointer("tran.indexing").get()
                 } finally {
-                    DumbService.getInstance(project).completeJustSubmittedTasks()
 
                 }
             }
