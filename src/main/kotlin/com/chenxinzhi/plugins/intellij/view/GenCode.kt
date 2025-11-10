@@ -166,7 +166,7 @@ fun GenCode(project: Project) {
             var selectedIndex by remember { mutableIntStateOf(0) }
 
             LaunchedEffect(Unit) {
-                devModuleList = project.getAllModules().filter { it.name.contains("dev") }.apply {
+                devModuleList = project.getAllModules().apply {
                     devModules = this
                 }.map {
                     GenData(
@@ -179,7 +179,7 @@ fun GenCode(project: Project) {
                         val savedModuleName = settings.devModuleName
                         val moduleIndex = if (savedModuleName.isNotEmpty()) {
                             devModules.indexOfFirst { m -> m.name == savedModuleName }
-                        } else -1
+                        } else it.indexOfFirst { it.name.contains("dev") }
 
                         selectedIndex = if (moduleIndex >= 0) moduleIndex else 0
                         devModule = devModules[selectedIndex]
