@@ -336,7 +336,7 @@ fun GenCode(project: Project) {
                 var selectedIndex by remember { mutableIntStateOf(0) }
 
                 LaunchedEffect(Unit) {
-                    apiModuleList = project.getAllModules().filter { it.name.contains("api") }.map {
+                    apiModuleList = project.getAllModules().map {
                         GenData(
                             it.name, AllIconsKeys.Nodes.Module, (Paths.get(it.moduleFilePath).parent ?: "").toString()
                         )
@@ -347,7 +347,7 @@ fun GenCode(project: Project) {
                             val savedApiPath = settings.serviceApiPath
                             val apiPathIndex = if (savedApiPath.isNotEmpty()) {
                                 it.indexOfFirst { m -> m.other == savedApiPath }
-                            } else -1
+                            } else it.indexOfFirst { it.name.contains("api" ) }
 
                             selectedIndex = if (apiPathIndex >= 0) apiPathIndex else 0
                             nowServiceApiPath = it[selectedIndex].other
