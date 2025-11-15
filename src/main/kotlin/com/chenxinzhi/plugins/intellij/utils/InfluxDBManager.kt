@@ -30,20 +30,20 @@ class InfluxDBManager(private val project: Project) {
                     }
                     list2 = run {
                         list1.associateWith {
-                            {
-                                val sql = "SHOW FIELD KEYS FROM \"$it\""
-                                val query = with(InfluxQueryService) {
-                                    query(sql)
-                                }
-                                val sql1 = "SHOW TAG KEYS FROM \"$it\""
-                                val query1 = with(InfluxQueryService) {
-                                    query(sql1)
-                                }
-                                query.filter { it.value.firstOrNull()?.keys?.contains("fieldKey") == true }
-                                    .flatMap {
-                                        it.value.firstOrNull()?.values ?: emptyList()
-                                    } + query1.flatMap { it.value.firstOrNull()?.values ?: emptyList() } // 模拟数据} }
-                            }()
+                            // 模拟数据} }
+                            val sql2 = "SHOW FIELD KEYS FROM \"$it\""
+                            val query2 = with(InfluxQueryService) {
+                                this@load.query(sql2)
+                            }
+                            val sql11 = "SHOW TAG KEYS FROM \"$it\""
+                            val query11 = with(InfluxQueryService) {
+                                this@load.query(sql11)
+                            }
+                            // 模拟数据} }
+                            query2.filter { it.value.firstOrNull()?.keys?.contains("fieldKey") == true }
+                                .flatMap {
+                                    it.value.firstOrNull()?.values ?: emptyList()
+                                } + query11.flatMap { it.value.firstOrNull()?.values ?: emptyList() } // 模拟数据} }
                         }
                     }
                 } catch (_: Exception) {
