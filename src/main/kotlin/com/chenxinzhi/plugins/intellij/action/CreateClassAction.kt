@@ -1,7 +1,6 @@
 package com.chenxinzhi.plugins.intellij.action
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
-import com.chenxinzhi.plugins.intellij.services.HandlerService
 import com.intellij.codeInsight.daemon.JavaErrorBundle
 import com.intellij.core.JavaPsiBundle
 import com.intellij.ide.actions.CreateFileFromTemplateDialog
@@ -19,7 +18,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.InputValidatorEx
@@ -209,84 +207,81 @@ class CreateClassAction : JavaCreateTemplateInPackageAction<PsiClass?>(
         createdElement: PsiClass, templateName: String?, customProperties: MutableMap<String?, String?>?
     ) {
         val project = createdElement.project
-        val service = project.service<HandlerService>()
-        service.handler {
-            (ApplicationManager.getApplication() as ApplicationImpl)
-                .runWriteActionWithCancellableProgressInDispatchThread(
-                    LanguageBundle.messagePointer("tran.processing").get(),
-                    project, null
-                ) {
-                    runWriteCommandAction(project) {
-                        val factory = JavaPsiFacade.getElementFactory(project)
-                        val manager = PsiManager.getInstance(project)
-                        val resolveScope = GlobalSearchScope.allScope(project)
-                        super.postProcess(createdElement, templateName, customProperties)
-                        val fieldKey = factory.createField("key", PsiTypes.intType())
-                        fieldKey.modifierList?.setModifierProperty(PsiModifier.PRIVATE, true)
-                        fieldKey.modifierList?.setModifierProperty(PsiModifier.FINAL, true)
-                        val fieldValue = factory.createField("value", PsiType.getJavaLangString(manager, resolveScope))
-                        fieldValue.modifierList?.setModifierProperty(PsiModifier.PRIVATE, true)
-                        fieldValue.modifierList?.setModifierProperty(PsiModifier.FINAL, true)
-                        val a1 = try {
-                            factory.createAnnotationFromText("@lombok.AllArgsConstructor", null)
-                        } catch (_: Exception) {
-                            Messages.showWarningDialog(
-                                project,
-                                LanguageBundle.getLazyMessage("notfound.class.content", "lombok.AllArgsConstructor")
-                                    .get(),
-                                LanguageBundle.getLazyMessage("notfound.class.title").get()
-                            )
-                            return@runWriteCommandAction
-                        }
-                        val a2 = try {
-                            factory.createAnnotationFromText("@lombok.Getter", null)
-                        } catch (_: Exception) {
-                            Messages.showWarningDialog(
-                                project,
-                                LanguageBundle.getLazyMessage("notfound.class.content", "lombok.Getter").get(),
-                                LanguageBundle.getLazyMessage("notfound.class.title").get()
-                            )
-                            return@runWriteCommandAction
-                        }
-                        val docComment = factory.createCommentFromText(
-                            """// ${p?.first ?: ""}""".trimIndent(), null
+        (ApplicationManager.getApplication() as ApplicationImpl)
+            .runWriteActionWithCancellableProgressInDispatchThread(
+                LanguageBundle.messagePointer("tran.processing").get(),
+                project, null
+            ) {
+                runWriteCommandAction(project) {
+                    val factory = JavaPsiFacade.getElementFactory(project)
+                    val manager = PsiManager.getInstance(project)
+                    val resolveScope = GlobalSearchScope.allScope(project)
+                    super.postProcess(createdElement, templateName, customProperties)
+                    val fieldKey = factory.createField("key", PsiTypes.intType())
+                    fieldKey.modifierList?.setModifierProperty(PsiModifier.PRIVATE, true)
+                    fieldKey.modifierList?.setModifierProperty(PsiModifier.FINAL, true)
+                    val fieldValue = factory.createField("value", PsiType.getJavaLangString(manager, resolveScope))
+                    fieldValue.modifierList?.setModifierProperty(PsiModifier.PRIVATE, true)
+                    fieldValue.modifierList?.setModifierProperty(PsiModifier.FINAL, true)
+                    val a1 = try {
+                        factory.createAnnotationFromText("@lombok.AllArgsConstructor", null)
+                    } catch (_: Exception) {
+                        Messages.showWarningDialog(
+                            project,
+                            LanguageBundle.getLazyMessage("notfound.class.content", "lombok.AllArgsConstructor")
+                                .get(),
+                            LanguageBundle.getLazyMessage("notfound.class.title").get()
                         )
-                        val enums = p?.let { v ->
-                            val second = v.second
-                            second.map { i ->
-                                factory.createEnumConstantFromText(
-                                    """${numberToWords(i.key)}(${i.key},"${i.value}")""", null
-                                )
-
-                            }
-                        }
-
-                        createdElement.apply {
-                            add(fieldKey)
-                            add(fieldValue)
-                            createdElement.modifierList?.apply {
-                                addBefore(a1, createdElement.modifierList?.firstChild)
-                                addBefore(a2, createdElement.modifierList?.firstChild)
-                                addBefore(docComment, createdElement.modifierList?.firstChild)
-                            }
-                            enums?.forEach(::add)
-                            JavaCodeStyleManager.getInstance(project).apply {
-                                shortenClassReferences(createdElement)
-                                invokeLater {
-                                    runWriteCommandAction(project) {
-                                        CodeStyleManager.getInstance(project).apply {
-                                            reformat(createdElement, true)
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
-
+                        return@runWriteCommandAction
                     }
-                }
+                    val a2 = try {
+                        factory.createAnnotationFromText("@lombok.Getter", null)
+                    } catch (_: Exception) {
+                        Messages.showWarningDialog(
+                            project,
+                            LanguageBundle.getLazyMessage("notfound.class.content", "lombok.Getter").get(),
+                            LanguageBundle.getLazyMessage("notfound.class.title").get()
+                        )
+                        return@runWriteCommandAction
+                    }
+                    val docComment = factory.createCommentFromText(
+                        """// ${p?.first ?: ""}""".trimIndent(), null
+                    )
+                    val enums = p?.let { v ->
+                        val second = v.second
+                        second.map { i ->
+                            factory.createEnumConstantFromText(
+                                """${numberToWords(i.key)}(${i.key},"${i.value}")""", null
+                            )
 
-        }
+                        }
+                    }
+
+                    createdElement.apply {
+                        add(fieldKey)
+                        add(fieldValue)
+                        createdElement.modifierList?.apply {
+                            addBefore(a1, createdElement.modifierList?.firstChild)
+                            addBefore(a2, createdElement.modifierList?.firstChild)
+                            addBefore(docComment, createdElement.modifierList?.firstChild)
+                        }
+                        enums?.forEach(::add)
+                        JavaCodeStyleManager.getInstance(project).apply {
+                            shortenClassReferences(createdElement)
+                            invokeLater {
+                                runWriteCommandAction(project) {
+                                    CodeStyleManager.getInstance(project).apply {
+                                        reformat(createdElement, true)
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                }
+            }
+
 
     }
 }
