@@ -17,6 +17,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -213,6 +214,7 @@ class CreateClassAction : JavaCreateTemplateInPackageAction<PsiClass?>(
                 project, null
             ) {
                 runWriteCommandAction(project) {
+                    CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
                     val factory = JavaPsiFacade.getElementFactory(project)
                     val manager = PsiManager.getInstance(project)
                     val resolveScope = GlobalSearchScope.allScope(project)

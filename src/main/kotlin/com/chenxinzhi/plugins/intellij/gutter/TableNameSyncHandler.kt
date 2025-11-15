@@ -15,6 +15,7 @@ import com.intellij.database.util.DbUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
 import com.intellij.openapi.application.invokeLater
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -193,7 +194,9 @@ class TableNameSyncHandler : GutterIconNavigationHandler<PsiElement> {
                 LanguageBundle.messagePointer("tran.processing").get(),
                 project, null
             ) {
+
                 runWriteCommandAction(project) {
+                    CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
                     val allInheritedFields = mutableSetOf<String>()
                     var currentClass = psiClass.superClass
                     while (currentClass != null) {
