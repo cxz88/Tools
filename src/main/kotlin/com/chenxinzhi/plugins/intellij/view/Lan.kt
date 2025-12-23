@@ -8,14 +8,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.TranService
+import com.chenxinzhi.plugins.intellij.services.TranslationCacheService
+import com.chenxinzhi.plugins.intellij.utils.ExcelUtils
 import com.chenxinzhi.plugins.intellij.utils.getAllModules
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiLiteralExpression
+import com.intellij.psi.PsiNewExpression
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import localizeLiteralArgsUsingPsi
 import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import java.io.File
 import java.nio.file.Paths
 
 @Composable
@@ -89,33 +104,160 @@ fun Lan(project: Project) {
                 first = false
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${LanguageBundle.messagePointer("tran.app.key").get()}: ")
-                Spacer(Modifier.width(8.dp))
-                TextField(
-                    state = appKey,
-                    modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") }
-                )
+
+            // 导出和导入按钮
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(enabled = enabled, onClick = {
+                    val data = moduleList[selectedIndex]
+                    data.module?.let { module ->
+
+
+                                exportTranslationsToExcel(project, module, data.other)
+
+
+
+
+                    }
+                }) {
+                    Text("导出到 Excel")
+                }
+
+                OutlinedButton(enabled = enabled, onClick = {
+                    importTranslationsFromExcel(project)
+                }) {
+                    Text("从 Excel 导入")
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${LanguageBundle.messagePointer("tran.app.secret").get()}: ")
-                Spacer(Modifier.width(8.dp))
-                TextField(
-                    state = appSecret,
-                    modifier = Modifier.width(400.dp),
-                    placeholder = { Text("") }
-                )
-            }
+
             Spacer(modifier = Modifier.height(16.dp))
             DefaultButton(enabled = enabled, onClick = {
                 val data = moduleList[selectedIndex]
-                data.module?.let { localizeLiteralArgsUsingPsi(project, modulePath = data.other, module = it,appSecret=appSecret.text.toString(),appKey=appKey.text.toString()) }
+                data.module?.let {
+                    localizeLiteralArgsUsingPsi(
+                        project,
+                        modulePath = data.other,
+                        module = it,
+                        appSecret = appSecret.text.toString(),
+                        appKey = appKey.text.toString()
+                    )
+                }
             }) {
                 Text(LanguageBundle.messagePointer("tran.translate").get())
             }
         }
     }
 
+}
+
+/**
+ * 导出翻译内容到Excel
+ */
+private fun exportTranslationsToExcel(project: Project, module: Module, modulePath: String) {
+    val descriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
+        .withTitle("选择导出目录")
+        .withDescription("选择Excel文件保存的目录")
+
+    val chooser = FileChooserFactory.getInstance().createFileChooser(descriptor, project, null)
+    val selectedFiles =
+        chooser.choose(project)
+
+    ProgressManager.getInstance().run(object : Task.Modal(
+        project,
+        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} ServiceException...",
+        true
+    ) {
+        override fun run(p0: ProgressIndicator) {
+    if (selectedFiles.isNotEmpty()) {
+        val selectedDir = File(selectedFiles[0].path)
+
+        // 收集需要翻译的中文字符串
+        val chineseTexts = mutableListOf<String>()
+
+        DumbService.getInstance(project).runReadActionInSmartMode<Unit> {
+            val psiClass =
+                runReadAction {
+                    JavaPsiFacade.getInstance(project)
+                        .findClass(
+                            "org.springblade.core.log.exception.ServiceException",
+                            GlobalSearchScope.allScope(project)
+                        )
+                }
+
+            runReadAction {
+                if (psiClass != null) {
+                    val refs = ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+
+
+                    refs.forEach { ref ->
+                        val element = ref.element
+                        val parent = element.parent
+
+                        if (parent is PsiNewExpression) {
+                            val argList = parent.argumentList
+                            val expressions = argList?.expressions ?: emptyArray()
+
+                            for (expr in expressions) {
+                                if (expr is PsiLiteralExpression) {
+                                    val value = expr.value as? String
+                                    if (!value.isNullOrBlank() && !chineseTexts.contains(value)) {
+                                        chineseTexts.add(value)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (chineseTexts.isEmpty()) {
+//            project.notifyInfo("未找到需要翻译的内容")
+            return
+        }
+
+        // 导出到Excel
+        val outputFile = File(selectedDir, "translations_${System.currentTimeMillis()}.xlsx")
+        try {
+            ExcelUtils.exportToExcel(chineseTexts, outputFile)
+//            project.notifyInfo("成功导出 ${chineseTexts.size} 条内容到 ${outputFile.name}")
+        } catch (e: Exception) {
+//            project.notifyInfo("导出失败: ${e.message}")
+            e.printStackTrace()
+        }
+    }}})
+}
+
+/**
+ * 从Excel导入翻译内容
+ */
+private fun importTranslationsFromExcel(project: Project) {
+    val descriptor = FileChooserDescriptorFactory.createSingleFileDescriptor("xlsx")
+        .withTitle("选择Excel文件")
+        .withDescription("选择包含翻译内容的Excel文件")
+
+    val chooser = FileChooserFactory.getInstance().createFileChooser(descriptor, project, null)
+    val selectedFiles = chooser.choose(project)
+
+    if (selectedFiles.isNotEmpty()) {
+        val selectedFile = File(selectedFiles[0].path)
+
+        try {
+            val translations = ExcelUtils.importFromExcel(selectedFile)
+
+            if (translations.isEmpty()) {
+//                project.notifyInfo("未找到有效的翻译内容")
+                return
+            }
+
+            // 将翻译内容存入缓存
+            val cacheService = TranslationCacheService.getInstance(project)
+            cacheService.clear() // 清空之前的缓存
+            cacheService.addTranslations(translations)
+
+//            project.notifyInfo("成功导入 ${translations.size} 条翻译内容")
+        } catch (e: Exception) {
+//            project.notifyInfo("导入失败: ${e.message}")
+            e.printStackTrace()
+        }
+    }
 }

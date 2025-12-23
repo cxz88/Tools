@@ -1,7 +1,7 @@
 
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
-import com.chenxinzhi.plugins.intellij.utils.notifyError
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.chenxinzhi.plugins.intellij.services.TranslationCacheService
+import com.chenxinzhi.plugins.intellij.utils.ExcelUtils
 import com.google.common.base.CaseFormat
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.application.ApplicationManager
@@ -23,10 +23,7 @@ import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
-import com.youdao.aicloud.translate.TranslateDemo
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -108,20 +105,13 @@ fun localizeLiteralArgsUsingPsi(
 
         }
         val map = literalPairs.map { it.second }
-        val result =
-            chunkConcat(map, 500, appKey, appSecret, progressIndicator, "en", project)
-                .map {
-                    it?.lowercase()
-                        ?.split("[^a-z0-9]+".toRegex())  // 以非字母数字分割
-                        ?.filter { str -> str.isNotEmpty() }     // 去掉空串
-                        ?.joinToString(".") ?: ""
-                }
+
         progressIndicator.text = LanguageBundle.messagePointer("tran.translating.name").get()
         progressIndicator.fraction = 0.0
         progressIndicator.text2 = null
         val size2 = literalPairs.size
         // 先尝试复用已有 properties 中的 key（value 匹配）
-        literalPairs = literalPairs.map { it.first }.zip(result).mapIndexed { index, (expr, v) ->
+        literalPairs = literalPairs.map { it.first }.zip(map).mapIndexed { index, (expr, v) ->
             val existingKey = defaultProps.entries.firstOrNull { it.value == v }?.key
             expr to (existingKey ?: textToKey.getOrPut(v) {
                 progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.translating.name").get()} $v"
@@ -153,21 +143,15 @@ fun localizeLiteralArgsUsingPsi(
         }
         progressIndicator.fraction = 0.4
         if (needTranslation.isNotEmpty()) {
-            val result =
-                chunkConcat(
-                    needTranslation.values.toList(),
-                    appKey = appKey,
-                    appSecret = appSecret,
-                    progressIndicator = progressIndicator,
-                    project = project
-                )
-            val size = needTranslation.keys.size
-            needTranslation.keys.forEachIndexed { index, key ->
-                if (progressIndicator.isCanceled) throw CancellationException("")
-                result[index]?.let {
-                    progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.translating").get()} $it"
-                    progressIndicator.fraction = (index.toDouble() / size) * 0.6
-                    koProps[key] = it
+            // 获取翻译缓存服务
+            val cacheService = TranslationCacheService.getInstance(project)
+
+            // 先检查缓存中是否有翻译
+            needTranslation.forEach { (key, text) ->
+                val cachedTranslation = cacheService.getTranslation(text)
+                if (cachedTranslation != null) {
+                    // 使用缓存的翻译
+                    koProps[key] = cachedTranslation
                 }
             }
         }
@@ -235,7 +219,7 @@ private fun loadPropertiesReadable(file: File, project: Project): MutableMap<Str
     if (!file.exists()) return map
     val vFile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(file) ?: return map
     val psiFile =
-        PsiManager.getInstance(project).findFile(vFile)
+        runReadAction { PsiManager.getInstance(project).findFile(vFile) }
             ?: return map
 
     if (psiFile is PropertiesFile) {
@@ -290,20 +274,28 @@ private fun savePropertiesReadable(project: Project, virtualFile: VirtualFile, m
 }
 
 private fun generateKeyFromText(fqcn: String, text: String): String {
-    val removeSuffix =
-        fqcn.substringAfter("impl.").substringAfter("controller.").substringAfter("util.").substringAfter("utils.")
-            .removeSuffix("Impl").removeSuffix("Controller").removeSuffix("Util").removeSuffix("Service")
-            .removeSuffix("Utils").replace(".", "_")
+    // 使用拼音作为key
+    val pinyinKey = ExcelUtils.chineseToPinyin(text)
 
-    val string = when {
-        removeSuffix.first().isUpperCase() -> CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, removeSuffix)
-        else -> CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, removeSuffix)
-    }
-    val replace = string.replace(Regex("_+")) { _ ->
-        "."
+    // 如果拼音为空，使用原来的逻辑
+    if (pinyinKey.isBlank()) {
+        val removeSuffix =
+            fqcn.substringAfter("impl.").substringAfter("controller.").substringAfter("util.").substringAfter("utils.")
+                .removeSuffix("Impl").removeSuffix("Controller").removeSuffix("Util").removeSuffix("Service")
+                .removeSuffix("Utils").replace(".", "_")
+
+        val string = when {
+            removeSuffix.first().isUpperCase() -> CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, removeSuffix)
+            else -> CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, removeSuffix)
+        }
+        val replace = string.replace(Regex("_+")) { _ ->
+            "."
+        }
+
+        return "$replace.$text"
     }
 
-    return "$replace.$text"
+    return pinyinKey
 }
 
 
@@ -349,48 +341,6 @@ fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator) -> (
 }
 
 
-suspend fun chunkConcat(
-    strings: List<String>,
-    maxLength: Int = 500,
-    appKey: String = "",
-    appSecret: String = "",
-    progressIndicator: ProgressIndicator,
-    to: String = "ko",
-    project: Project
-): List<String?> = coroutineScope {
-    val toList = strings.chunked(maxLength).toList()
-    val f1 = toList.size
-    toList.mapIndexed { index, text ->
-        val message = TranslateDemo.tran(text.toTypedArray(), "zh-CHS", to, appKey, appSecret)
-        progressIndicator.fraction = index.toDouble() / f1
-        val jacksonObjectMapper = jacksonObjectMapper()
-        val readValue = try {
-            jacksonObjectMapper.readValue(message, Map::class.java)
-        } catch (_: Exception) {
-            project.notifyError(LanguageBundle.messagePointer("tran.translating.err").get())
-            throw CancellationException()
-        }
-        (readValue?.let {
-            it.let { map ->
-                map["translateResults"]?.let { it1 ->
-                    if (it1 is List<*>) {
-                        it1.map { it2 ->
-                            val get = (it2 as? Map<*, *>)?.get("translation")
-                            get.toString()
-                        }
-                    } else listOf(it1 as? String)
-                }
-            }
-        } ?: throw CancellationException().apply {
-            project.notifyError(LanguageBundle.messagePointer("tran.translating.err").get())
-        }).apply {
-            if (f1 == 1) {
-                return@apply
-            }
-            delay(1000)
-        }
 
-    }.flatMap { it }.toList()
-}
 
 

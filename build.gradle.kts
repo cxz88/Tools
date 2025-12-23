@@ -42,6 +42,13 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
 
+    // Apache POI for Excel
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+    // Pinyin4j for Chinese to Pinyin conversion
+    implementation("com.belerweb:pinyin4j:2.5.1")
+
     intellijPlatform {
         create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
 
