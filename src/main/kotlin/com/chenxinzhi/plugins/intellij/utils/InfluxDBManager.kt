@@ -33,11 +33,11 @@ class InfluxDBManager(private val project: Project) {
                             // 模拟数据} }
                             val sql2 = "SHOW FIELD KEYS FROM \"$it\""
                             val query2 = with(InfluxQueryService) {
-                                this@load.query(sql2)
+                                query(sql2)
                             }
                             val sql11 = "SHOW TAG KEYS FROM \"$it\""
                             val query11 = with(InfluxQueryService) {
-                                this@load.query(sql11)
+                                query(sql11)
                             }
                             // 模拟数据} }
                             query2.filter { it.value.firstOrNull()?.keys?.contains("fieldKey") == true }

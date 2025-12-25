@@ -1,7 +1,6 @@
-
+package com.chenxinzhi.plugins.intellij.utils
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.TranslationCacheService
-import com.chenxinzhi.plugins.intellij.utils.ExcelUtils
 import com.google.common.base.CaseFormat
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.application.ApplicationManager
@@ -27,6 +26,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 
 fun localizeLiteralArgsUsingPsi(
@@ -36,9 +36,7 @@ fun localizeLiteralArgsUsingPsi(
     bundleBaseName: String = "message",
     resourceDirRelative: String = "src/main/resources/i18n",
     modulePath: String = "",
-    module: Module,
-    appSecret: String = "",
-    appKey: String = ""
+    module: Module
 ) {
     runLocalizationTask(project) { progressIndicator ->
 
@@ -153,6 +151,10 @@ fun localizeLiteralArgsUsingPsi(
                     // 使用缓存的翻译
                     koProps[key] = cachedTranslation
                 }
+                if (cachedTranslation?.isBlank()?:true) {
+                    koProps.remove(key)
+                    defaultProps.remove(key)
+                }
             }
         }
         progressIndicator.fraction = 1.0
@@ -167,7 +169,9 @@ fun localizeLiteralArgsUsingPsi(
                 try {
                     val factory = JavaPsiFacade.getInstance(project).elementFactory
                     val f1 = literalPairs.size
-                    literalPairs.forEachIndexed { index, (literal, key) ->
+                    literalPairs.filter {
+                        koProps[it.second]?.isNotBlank() ?: false
+                    }.forEachIndexed { index, (literal, key) ->
                         if (progressIndicator.isCanceled) {
                             return@forEachIndexed
                         }
@@ -188,15 +192,14 @@ fun localizeLiteralArgsUsingPsi(
                     }
                     val findFileByIoFile =
                         LocalFileSystem.getInstance().findFileByIoFile(defaultFile)
-                    val findFileByIoFile1 =
+                    val findFileByIoFileKo =
                         LocalFileSystem.getInstance().findFileByIoFile(koFile)
                     // 保存 properties 文件
                     findFileByIoFile
                         ?.let {
                             savePropertiesReadable(project, it, defaultProps)
                         }
-
-                    findFileByIoFile1
+                    findFileByIoFileKo
                         ?.let { savePropertiesReadable(project, it, koProps) }
                     // 刷新 VFS 以便 IDEA 看到文件变化
                     LocalFileSystem.getInstance().refreshAndFindFileByIoFile(defaultFile)
@@ -237,7 +240,7 @@ private fun loadPropertiesReadable(file: File, project: Project): MutableMap<Str
     val lines =
         runReadAction {
             doc?.text?.lines()
-                ?: java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
+                ?: Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)
         }
 
 

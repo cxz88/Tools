@@ -128,7 +128,7 @@ fun Project.notifyError(message: String) {
 suspend fun LocalDataSource.getSchemas(project: Project) = coroutineScope {
     suspend {
         while (dataSource.isLoading(project)) {
-            withContext(Dispatchers.IO) { delay(1000) }
+            delay(1000)
         }
         DasUtil.getSchemas(dataSource).toList()
     }().filterNot {

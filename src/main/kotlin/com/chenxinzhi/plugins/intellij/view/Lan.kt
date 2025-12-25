@@ -25,7 +25,7 @@ import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import localizeLiteralArgsUsingPsi
+import com.chenxinzhi.plugins.intellij.utils.localizeLiteralArgsUsingPsi
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
@@ -104,28 +104,26 @@ fun Lan(project: Project) {
                 first = false
             }
 
-
+            var isImport by remember { mutableStateOf(false) }
             // 导出和导入按钮
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(enabled = enabled, onClick = {
                     val data = moduleList[selectedIndex]
                     data.module?.let { module ->
-
-
-                                exportTranslationsToExcel(project, module, data.other)
-
-
-
+                        exportTranslationsToExcel(project, module)
 
                     }
                 }) {
-                    Text("导出到 Excel")
+                    Text(LanguageBundle.messagePointer("tran.excel.export").get())
                 }
 
                 OutlinedButton(enabled = enabled, onClick = {
-                    importTranslationsFromExcel(project)
+                    importTranslationsFromExcel(project) {
+                        isImport = true
+                    }
                 }) {
-                    Text("从 Excel 导入")
+                    Text("${LanguageBundle.messagePointer("tran.excel.import").get()} ${if (isImport) LanguageBundle.messagePointer("tran.excel.import.success").get() else ""}")
+
                 }
             }
 
@@ -136,9 +134,7 @@ fun Lan(project: Project) {
                     localizeLiteralArgsUsingPsi(
                         project,
                         modulePath = data.other,
-                        module = it,
-                        appSecret = appSecret.text.toString(),
-                        appKey = appKey.text.toString()
+                        module = it
                     )
                 }
             }) {
@@ -152,10 +148,10 @@ fun Lan(project: Project) {
 /**
  * 导出翻译内容到Excel
  */
-private fun exportTranslationsToExcel(project: Project, module: Module, modulePath: String) {
+private fun exportTranslationsToExcel(project: Project, module: Module) {
     val descriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
-        .withTitle("选择导出目录")
-        .withDescription("选择Excel文件保存的目录")
+        .withTitle(LanguageBundle.message("tran.excel.select.export.dir"))
+        .withDescription(LanguageBundle.message("tran.excel.select.export.dir.desc"))
 
     val chooser = FileChooserFactory.getInstance().createFileChooser(descriptor, project, null)
     val selectedFiles =
@@ -167,73 +163,76 @@ private fun exportTranslationsToExcel(project: Project, module: Module, modulePa
         true
     ) {
         override fun run(p0: ProgressIndicator) {
-    if (selectedFiles.isNotEmpty()) {
-        val selectedDir = File(selectedFiles[0].path)
+            if (selectedFiles.isNotEmpty()) {
+                val selectedDir = File(selectedFiles[0].path)
 
-        // 收集需要翻译的中文字符串
-        val chineseTexts = mutableListOf<String>()
+                // 收集需要翻译的中文字符串
+                val chineseTexts = mutableListOf<String>()
 
-        DumbService.getInstance(project).runReadActionInSmartMode<Unit> {
-            val psiClass =
-                runReadAction {
-                    JavaPsiFacade.getInstance(project)
-                        .findClass(
-                            "org.springblade.core.log.exception.ServiceException",
-                            GlobalSearchScope.allScope(project)
-                        )
-                }
+                DumbService.getInstance(project).runReadActionInSmartMode<Unit> {
+                    val psiClass =
+                        runReadAction {
+                            JavaPsiFacade.getInstance(project)
+                                .findClass(
+                                    "org.springblade.core.log.exception.ServiceException",
+                                    GlobalSearchScope.allScope(project)
+                                )
+                        }
 
-            runReadAction {
-                if (psiClass != null) {
-                    val refs = ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+                    runReadAction {
+                        if (psiClass != null) {
+                            val refs =
+                                ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
 
 
-                    refs.forEach { ref ->
-                        val element = ref.element
-                        val parent = element.parent
+                            refs.forEach { ref ->
+                                val element = ref.element
+                                val parent = element.parent
 
-                        if (parent is PsiNewExpression) {
-                            val argList = parent.argumentList
-                            val expressions = argList?.expressions ?: emptyArray()
+                                if (parent is PsiNewExpression) {
+                                    val argList = parent.argumentList
+                                    val expressions = argList?.expressions ?: emptyArray()
 
-                            for (expr in expressions) {
-                                if (expr is PsiLiteralExpression) {
-                                    val value = expr.value as? String
-                                    if (!value.isNullOrBlank() && !chineseTexts.contains(value)) {
-                                        chineseTexts.add(value)
+                                    for (expr in expressions) {
+                                        if (expr is PsiLiteralExpression) {
+                                            val value = expr.value as? String
+                                            if (!value.isNullOrBlank() && !chineseTexts.contains(value)) {
+                                                chineseTexts.add(value)
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                if (chineseTexts.isEmpty()) {
+//            project.notifyInfo("未找到需要翻译的内容")
+                    return
+                }
+
+                // 导出到Excel
+                val outputFile = File(selectedDir, "${module.name}_${System.currentTimeMillis()}.xlsx")
+                try {
+                    ExcelUtils.exportToExcel(chineseTexts, outputFile)
+//            project.notifyInfo("成功导出 ${chineseTexts.size} 条内容到 ${outputFile.name}")
+                } catch (e: Exception) {
+//            project.notifyInfo("导出失败: ${e.message}")
+                    e.printStackTrace()
+                }
             }
         }
-
-        if (chineseTexts.isEmpty()) {
-//            project.notifyInfo("未找到需要翻译的内容")
-            return
-        }
-
-        // 导出到Excel
-        val outputFile = File(selectedDir, "translations_${System.currentTimeMillis()}.xlsx")
-        try {
-            ExcelUtils.exportToExcel(chineseTexts, outputFile)
-//            project.notifyInfo("成功导出 ${chineseTexts.size} 条内容到 ${outputFile.name}")
-        } catch (e: Exception) {
-//            project.notifyInfo("导出失败: ${e.message}")
-            e.printStackTrace()
-        }
-    }}})
+    })
 }
 
 /**
  * 从Excel导入翻译内容
  */
-private fun importTranslationsFromExcel(project: Project) {
+private fun importTranslationsFromExcel(project: Project, fallBack: () -> Unit) {
     val descriptor = FileChooserDescriptorFactory.createSingleFileDescriptor("xlsx")
-        .withTitle("选择Excel文件")
-        .withDescription("选择包含翻译内容的Excel文件")
+        .withTitle(LanguageBundle.message("tran.excel.select.import.file"))
+        .withDescription(LanguageBundle.message("tran.excel.select.import.file.desc"))
 
     val chooser = FileChooserFactory.getInstance().createFileChooser(descriptor, project, null)
     val selectedFiles = chooser.choose(project)
@@ -253,7 +252,7 @@ private fun importTranslationsFromExcel(project: Project) {
             val cacheService = TranslationCacheService.getInstance(project)
             cacheService.clear() // 清空之前的缓存
             cacheService.addTranslations(translations)
-
+            fallBack()
 //            project.notifyInfo("成功导入 ${translations.size} 条翻译内容")
         } catch (e: Exception) {
 //            project.notifyInfo("导入失败: ${e.message}")

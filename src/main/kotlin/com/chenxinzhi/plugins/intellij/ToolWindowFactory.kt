@@ -4,6 +4,7 @@ import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.utils.InfluxDBManager
 import com.chenxinzhi.plugins.intellij.view.GenCode
 import com.chenxinzhi.plugins.intellij.view.InfluxDBPanel
+import com.chenxinzhi.plugins.intellij.view.Lan
 import com.chenxinzhi.plugins.intellij.view.QRCodePanel
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -27,9 +28,9 @@ class ToolWindowFactory : ToolWindowFactory, DumbAware {
             GenCode(project)
         }
 
-//        toolWindow.addComposeTab(LanguageBundle.messagePointer("tran").get(), isLockable = false) {
-//            Lan(project)
-//        }
+        toolWindow.addComposeTab(LanguageBundle.messagePointer("tran").get(), isLockable = false) {
+            Lan(project)
+        }
 
         toolWindow.addComposeTab(LanguageBundle.messagePointer("tool.qrcode.name").get(), isLockable = false) {
             QRCodePanel(project)
