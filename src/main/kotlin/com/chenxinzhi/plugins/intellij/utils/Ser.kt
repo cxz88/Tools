@@ -43,21 +43,29 @@ fun localizeLiteralArgsUsingPsi(
 
         progressIndicator.isIndeterminate = false
         progressIndicator.text = LanguageBundle.messagePointer("tran.scanning").get()
-        val psiClass =
+        val psiClassList =
             runReadAction {
-                JavaPsiFacade.getInstance(project).findClass(fqcnOfException, GlobalSearchScope.allScope(project))
-            }
-                ?: return@runLocalizationTask {}
+                listOf(
+                    JavaPsiFacade.getInstance(project).findClass(fqcnOfException, GlobalSearchScope.allScope(project)),
+                    JavaPsiFacade.getInstance(project).findClass("org.springblade.core.tool.api.R", GlobalSearchScope.allScope(project))
+
+                )
+
+
+            }.filterNotNull()
+
         if (progressIndicator.isCanceled) throw CancellationException("")
         // 查找所有引用（包括 new 表达式）
         val refs =
             runReadAction {
-                val search = ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
-                val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
-                allSubClasses.flatMap {
-                    it?.let { element -> ReferencesSearch.search(element, GlobalSearchScope.moduleScope(module)) }
-                        ?.findAll() ?: emptyList()
-                }
+              psiClassList.flatMap {psiClass->
+                  val search = ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
+                  val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
+                  allSubClasses.flatMap {
+                      it?.let { element -> ReferencesSearch.search(element, GlobalSearchScope.moduleScope(module)) }
+                          ?.findAll() ?: emptyList()
+                  }
+              }
 
 
             }

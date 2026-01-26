@@ -20,7 +20,6 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.search.GlobalSearchScope
@@ -174,44 +173,55 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
                 val chineseTexts = mutableListOf<String>()
 
                 DumbService.getInstance(project).runReadActionInSmartMode<Unit> {
-                    val psiClass =
+                    val psiClassList =
                         runReadAction {
-                            JavaPsiFacade.getInstance(project)
-                                .findClass(
-                                    "java.lang.RuntimeException",
-                                    GlobalSearchScope.allScope(project)
-                                )
-                        }
+                            listOf(
+                                JavaPsiFacade.getInstance(project)
+                                    .findClass(
+                                        "java.lang.RuntimeException",
+                                        GlobalSearchScope.allScope(project)
+                                    ),
+                                JavaPsiFacade.getInstance(project)
+                                    .findClass("org.springblade.core.tool.api.R", GlobalSearchScope.allScope(project))
+                            )
+                        }.filterNotNull()
 
                     runReadAction {
-                        if (psiClass != null) {
 
+
+                        val allSubClasses = psiClassList.flatMap { psiClass ->
                             val search =
                                 ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
-                            val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
-                            val refs = allSubClasses.flatMap {
-                                it?.let { element -> ReferencesSearch.search(element, GlobalSearchScope.moduleScope(module)) }
-                                    ?.findAll() ?: emptyList()
+                            search.findAll()
+                        }
+                        val refs = allSubClasses.flatMap {
+                            it?.let { element ->
+                                ReferencesSearch.search(
+                                    element,
+                                    GlobalSearchScope.moduleScope(module)
+                                )
                             }
-                            refs.forEach { ref ->
-                                val element = ref.element
-                                val parent = element.parent
+                                ?.findAll() ?: emptyList()
+                        }
+                        refs.forEach { ref ->
+                            val element = ref.element
+                            val parent = element.parent
 
-                                if (parent is PsiNewExpression) {
-                                    val argList = parent.argumentList
-                                    val expressions = argList?.expressions ?: emptyArray()
+                            if (parent is PsiNewExpression) {
+                                val argList = parent.argumentList
+                                val expressions = argList?.expressions ?: emptyArray()
 
-                                    for (expr in expressions) {
-                                        if (expr is PsiLiteralExpression) {
-                                            val value = expr.value as? String
-                                            if (!value.isNullOrBlank() && !chineseTexts.contains(value)) {
-                                                chineseTexts.add(value)
-                                            }
+                                for (expr in expressions) {
+                                    if (expr is PsiLiteralExpression) {
+                                        val value = expr.value as? String
+                                        if (!value.isNullOrBlank() && !chineseTexts.contains(value)) {
+                                            chineseTexts.add(value)
                                         }
                                     }
                                 }
                             }
                         }
+
                     }
                 }
 
