@@ -20,9 +20,11 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
@@ -120,7 +122,11 @@ fun Lan(project: Project) {
                         isImport = true
                     }
                 }) {
-                    Text("${LanguageBundle.messagePointer("tran.excel.import").get()} ${if (isImport) LanguageBundle.messagePointer("tran.excel.import.success").get() else ""}")
+                    Text(
+                        "${
+                            LanguageBundle.messagePointer("tran.excel.import").get()
+                        } ${if (isImport) LanguageBundle.messagePointer("tran.excel.import.success").get() else ""}"
+                    )
 
                 }
             }
@@ -179,10 +185,13 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
 
                     runReadAction {
                         if (psiClass != null) {
-                            val refs =
+
+                            val search =
+                                ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
+                            val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
+                            val refs = allSubClasses.flatMap {
                                 ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
-
-
+                            }
                             refs.forEach { ref ->
                                 val element = ref.element
                                 val parent = element.parent
