@@ -180,9 +180,8 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
                                     .findClass(
                                         "java.lang.RuntimeException",
                                         GlobalSearchScope.allScope(project)
-                                    ),
-                                JavaPsiFacade.getInstance(project)
-                                    .findClass("org.springblade.core.tool.api.R", GlobalSearchScope.allScope(project))
+                                    )
+
                             )
                         }.filterNotNull()
 

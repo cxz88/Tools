@@ -47,7 +47,6 @@ fun localizeLiteralArgsUsingPsi(
             runReadAction {
                 listOf(
                     JavaPsiFacade.getInstance(project).findClass(fqcnOfException, GlobalSearchScope.allScope(project)),
-                    JavaPsiFacade.getInstance(project).findClass("org.springblade.core.tool.api.R", GlobalSearchScope.allScope(project))
 
                 )
 
