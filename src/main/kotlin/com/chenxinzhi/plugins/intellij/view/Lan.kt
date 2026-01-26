@@ -193,6 +193,8 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
                             val search =
                                 ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
                             search.findAll()
+                        }.toMutableList().apply {
+                            addAll(psiClassList)
                         }
                         val refs = allSubClasses.flatMap {
                             it?.let { element ->
