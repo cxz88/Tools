@@ -307,7 +307,7 @@ private fun savePropertiesReadable(project: Project, virtualFile: VirtualFile, m
 private fun generateKeyFromText(fqcn: String, text: String): String {
     // 使用拼音作为key
     // 如果拼音为空，使用原来的逻辑
-    if (text.isBlank()) {
+    if (text.isNotBlank()) {
         val removeSuffix =
             fqcn.substringAfter("impl.").substringAfter("controller.").substringAfter("util.").substringAfter("utils.")
                 .removeSuffix("Impl").removeSuffix("Controller").removeSuffix("Util").removeSuffix("Service")
