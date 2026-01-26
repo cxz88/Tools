@@ -1,10 +1,6 @@
 package com.chenxinzhi.plugins.intellij.utils
 
-import net.sourceforge.pinyin4j.PinyinHelper
-import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType
-import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
-import net.sourceforge.pinyin4j.format.HanyuPinyinToneType
-import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType
+
 import org.apache.poi.ss.usermodel.*
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
@@ -137,50 +133,4 @@ object ExcelUtils {
         }
     }
 
-    /**
-     * 将中文转换为拼音（小写，点号分隔）
-     * @param chinese 中文字符串
-     * @return 拼音字符串
-     */
-    fun chineseToPinyin(chinese: String): String {
-        if (chinese.isBlank()) return ""
-
-        val format = HanyuPinyinOutputFormat().apply {
-            caseType = HanyuPinyinCaseType.LOWERCASE
-            toneType = HanyuPinyinToneType.WITHOUT_TONE
-            vCharType = HanyuPinyinVCharType.WITH_V
-        }
-
-        val pinyinList = mutableListOf<String>()
-
-        for (char in chinese) {
-            if (char.isWhitespace()) {
-                continue
-            }
-
-            when {
-                // 中文字符
-                char.toString().matches(Regex("[\\u4e00-\\u9fa5]")) -> {
-                    try {
-                        val pinyinArray = PinyinHelper.toHanyuPinyinStringArray(char, format)
-                        if (pinyinArray != null && pinyinArray.isNotEmpty()) {
-                            pinyinList.add(pinyinArray[0])
-                        } else {
-                            pinyinList.add(char.toString())
-                        }
-                    } catch (e: Exception) {
-                        pinyinList.add(char.toString())
-                    }
-                }
-                // 英文字母或数字
-                char.isLetterOrDigit() -> {
-                    pinyinList.add(char.lowercase())
-                }
-                // 其他字符忽略
-                else -> {}
-            }
-        }
-
-        return pinyinList.joinToString(".")
-    }
 }
