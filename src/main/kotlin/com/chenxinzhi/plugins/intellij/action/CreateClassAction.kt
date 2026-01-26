@@ -16,6 +16,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.ApplicationImpl
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.DumbAware
@@ -268,10 +269,15 @@ class CreateClassAction : JavaCreateTemplateInPackageAction<PsiClass?>(
                         }
                         enums?.forEach(::add)
                     }
+
                     val psiDocumentManager = PsiDocumentManager.getInstance(project)
                     psiDocumentManager.commitAllDocuments()
                     JavaCodeStyleManager.getInstance(project).shortenClassReferences(createdElement)
-                    CodeStyleManager.getInstance(project).reformat(createdElement)
+                    invokeLater {
+                        runWriteCommandAction(project) {
+                            CodeStyleManager.getInstance(project).reformat(createdElement)
+                        }
+                    }
                 }
 
             }
