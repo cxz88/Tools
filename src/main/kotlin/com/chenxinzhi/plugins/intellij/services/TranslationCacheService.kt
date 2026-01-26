@@ -11,26 +11,26 @@ import com.intellij.openapi.project.Project
 class TranslationCacheService {
 
     // 存储中文到目标语言的翻译映射
-    private val translationCache = mutableMapOf<String, String>()
+    private val translationCache = mutableMapOf<String, Pair<String,Pair<String, String>>>()
 
     /**
      * 添加翻译映射
      */
-    fun addTranslation(chinese: String, translation: String) {
+    fun addTranslation(chinese: String, translation: Pair<String,Pair<String, String>>) {
         translationCache[chinese] = translation
     }
 
     /**
      * 批量添加翻译映射
      */
-    fun addTranslations(translations: Map<String, String>) {
+    fun addTranslations(translations: Map<String, Pair<String,Pair<String, String>>>) {
         translationCache.putAll(translations)
     }
 
     /**
      * 获取翻译
      */
-    fun getTranslation(chinese: String): String? {
+    fun getTranslation(chinese: String): Pair<String,Pair<String, String>>? {
         return translationCache[chinese]
     }
 
@@ -48,12 +48,7 @@ class TranslationCacheService {
         translationCache.clear()
     }
 
-    /**
-     * 获取所有缓存的翻译
-     */
-    fun getAllTranslations(): Map<String, String> {
-        return translationCache.toMap()
-    }
+
 
     /**
      * 获取缓存大小

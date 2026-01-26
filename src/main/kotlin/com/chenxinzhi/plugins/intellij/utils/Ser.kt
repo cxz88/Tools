@@ -20,6 +20,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.CancellationException
@@ -31,7 +32,7 @@ import java.nio.file.Files
 
 fun localizeLiteralArgsUsingPsi(
     project: Project,
-    fqcnOfException: String = "org.springblade.core.log.exception.ServiceException",
+    fqcnOfException: String = "java.lang.RuntimeException",
     i18nUtilFqn: String = "org.springblade.core.utils.MessageUtils",
     bundleBaseName: String = "message",
     resourceDirRelative: String = "src/main/resources/i18n",
@@ -51,7 +52,13 @@ fun localizeLiteralArgsUsingPsi(
         // 查找所有引用（包括 new 表达式）
         val refs =
             runReadAction {
-                ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+                val search = ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
+                val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
+                allSubClasses.flatMap {
+                    ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+                }
+
+
             }
 
         if (progressIndicator.isCanceled) throw CancellationException("")
@@ -59,6 +66,7 @@ fun localizeLiteralArgsUsingPsi(
 
         val defaultFile = File(modulePath, "$resourceDirRelative/$bundleBaseName.properties")
         val koFile = File(modulePath, "$resourceDirRelative/${bundleBaseName}_ko_KR.properties")
+        val zhFile = File(modulePath, "$resourceDirRelative/${bundleBaseName}_zh_CN.properties")
         if (progressIndicator.isCanceled) throw CancellationException("")
         val defaultProps =
             loadPropertiesReadable(defaultFile, project)
@@ -66,6 +74,9 @@ fun localizeLiteralArgsUsingPsi(
         if (progressIndicator.isCanceled) throw CancellationException("")
         val koProps =
             loadPropertiesReadable(koFile, project)
+
+        val zhProps =
+            loadPropertiesReadable(zhFile, project)
 
 
         // 收集将要替换的字面量节点与对应 key
@@ -108,16 +119,24 @@ fun localizeLiteralArgsUsingPsi(
         progressIndicator.fraction = 0.0
         progressIndicator.text2 = null
         val size2 = literalPairs.size
+        // 获取翻译缓存服务
+        val cacheService = TranslationCacheService.getInstance(project)
         // 先尝试复用已有 properties 中的 key（value 匹配）
         literalPairs = literalPairs.map { it.first }.zip(map).mapIndexed { index, (expr, v) ->
             val existingKey = defaultProps.entries.firstOrNull { it.value == v }?.key
             expr to (existingKey ?: textToKey.getOrPut(v) {
                 progressIndicator.text2 = "${LanguageBundle.messagePointer("tran.translating.name").get()} $v"
                 progressIndicator.fraction = (index.toDouble() / size2)
-                generateKeyFromText(
-                    runReadAction { PsiTreeUtil.getParentOfType(expr, PsiClass::class.java)?.qualifiedName }
-                        ?: "", v
-                )
+                val translation = cacheService.getTranslation(v)
+                if (translation == null) {
+                   ""
+                }else{
+                    generateKeyFromText(
+                        runReadAction { PsiTreeUtil.getParentOfType(expr, PsiClass::class.java)?.qualifiedName }
+                            ?: "", translation.first
+                    )
+                }
+
             })
         }.toMutableList()
         if (literalPairs.isEmpty()) return@runLocalizationTask {}
@@ -138,22 +157,24 @@ fun localizeLiteralArgsUsingPsi(
                 koProps[key] = text
                 needTranslation[key] = text
             }
+            if (!zhProps.containsKey(key)) {
+                zhProps[key] = text
+            }
         }
         progressIndicator.fraction = 0.4
         if (needTranslation.isNotEmpty()) {
-            // 获取翻译缓存服务
-            val cacheService = TranslationCacheService.getInstance(project)
-
             // 先检查缓存中是否有翻译
             needTranslation.forEach { (key, text) ->
                 val cachedTranslation = cacheService.getTranslation(text)
                 if (cachedTranslation != null) {
                     // 使用缓存的翻译
-                    koProps[key] = cachedTranslation
+                    koProps[key] = cachedTranslation.second.second
+                    defaultProps[key] = cachedTranslation.second.first
                 }
-                if (cachedTranslation?.isBlank()?:true) {
+                if ((cachedTranslation == null)) {
                     koProps.remove(key)
                     defaultProps.remove(key)
+                    zhProps.remove(key)
                 }
             }
         }
@@ -194,6 +215,8 @@ fun localizeLiteralArgsUsingPsi(
                         LocalFileSystem.getInstance().findFileByIoFile(defaultFile)
                     val findFileByIoFileKo =
                         LocalFileSystem.getInstance().findFileByIoFile(koFile)
+                    val findFileByIoFileZh =
+                        LocalFileSystem.getInstance().findFileByIoFile(zhFile)
                     // 保存 properties 文件
                     findFileByIoFile
                         ?.let {
@@ -201,10 +224,14 @@ fun localizeLiteralArgsUsingPsi(
                         }
                     findFileByIoFileKo
                         ?.let { savePropertiesReadable(project, it, koProps) }
+                    findFileByIoFileZh
+                        ?.let { savePropertiesReadable(project, it, zhProps) }
                     // 刷新 VFS 以便 IDEA 看到文件变化
                     LocalFileSystem.getInstance().refreshAndFindFileByIoFile(defaultFile)
                         ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
                     LocalFileSystem.getInstance().refreshAndFindFileByIoFile(koFile)
+                        ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
+                    LocalFileSystem.getInstance().refreshAndFindFileByIoFile(zhFile)
                         ?.let { VfsUtil.markDirtyAndRefresh(false, false, false, it) }
                     progressIndicator.text2 = LanguageBundle.messagePointer("tran.indexing").get()
                 } finally {
@@ -278,10 +305,8 @@ private fun savePropertiesReadable(project: Project, virtualFile: VirtualFile, m
 
 private fun generateKeyFromText(fqcn: String, text: String): String {
     // 使用拼音作为key
-    val pinyinKey = ExcelUtils.chineseToPinyin(text)
-
     // 如果拼音为空，使用原来的逻辑
-    if (pinyinKey.isBlank()) {
+    if (text.isBlank()) {
         val removeSuffix =
             fqcn.substringAfter("impl.").substringAfter("controller.").substringAfter("util.").substringAfter("utils.")
                 .removeSuffix("Impl").removeSuffix("Controller").removeSuffix("Util").removeSuffix("Service")
@@ -298,7 +323,7 @@ private fun generateKeyFromText(fqcn: String, text: String): String {
         return "$replace.$text"
     }
 
-    return pinyinKey
+    return text
 }
 
 
@@ -306,7 +331,7 @@ fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator) -> (
 
     ProgressManager.getInstance().run(object : Task.Modal(
         project,
-        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} ServiceException...",
+        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} RuntimeException...",
         true
     ) {
         var b: ((ProgressIndicator) -> Unit) = {}
@@ -330,7 +355,7 @@ fun runLocalizationTask(project: Project, task: suspend (ProgressIndicator) -> (
         override fun onFinished() {
             (ApplicationManager.getApplication() as ApplicationImpl)
                 .runWriteActionWithCancellableProgressInDispatchThread(
-                    "${LanguageBundle.messagePointer("tran.replacing.translate").get()} ServiceException",
+                    "${LanguageBundle.messagePointer("tran.replacing.translate").get()} RuntimeException",
                     project,
                     null
                 ) { indicator: ProgressIndicator ->

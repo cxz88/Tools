@@ -42,21 +42,30 @@ object ExcelUtils {
         chineseHeader.cellStyle = headerStyle
 
         val translationHeader = headerRow.createCell(1)
-        translationHeader.setCellValue("翻译（请填写）")
+        translationHeader.setCellValue("韩文（请填写）")
         translationHeader.cellStyle = headerStyle
+        val enHeader = headerRow.createCell(2)
+        enHeader.setCellValue("英文（请填写）")
+        enHeader.cellStyle = headerStyle
+
+        val keyHeader = headerRow.createCell(3)
+        keyHeader.setCellValue("key（请填写）")
+        keyHeader.cellStyle = headerStyle
 
         // 填充数据
-        chineseTexts.forEachIndexed { index, text ->
+        chineseTexts.distinct().forEachIndexed { index, text ->
             val row = sheet.createRow(index + 1)
             // Key列：使用拼音
             // 中文列
             row.createCell(0).setCellValue(text)
             // 翻译列（空白，待填写）
             row.createCell(1).setCellValue("")
+            row.createCell(2).setCellValue("")
+            row.createCell(3).setCellValue("")
         }
 
         // 自动调整列宽
-        for (i in 0..1) {
+        for (i in 0..3) {
             sheet.autoSizeColumn(i)
             // 增加一些额外宽度
             sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 2000)
@@ -74,8 +83,8 @@ object ExcelUtils {
      * @param inputFile 输入文件
      * @return 中文到翻译的映射
      */
-    fun importFromExcel(inputFile: File): Map<String, String> {
-        val translations = mutableMapOf<String, String>()
+    fun importFromExcel(inputFile: File): Map<String, Pair<String,Pair<String, String>>> {
+        val translations = mutableMapOf<String, Pair<String,Pair<String, String>>>()
 
         FileInputStream(inputFile).use { fis ->
             val workbook: Workbook = XSSFWorkbook(fis)
@@ -87,13 +96,17 @@ object ExcelUtils {
                 if (row != null) {
                     val chineseCell = row.getCell(0)
                     val translationCell = row.getCell(1)
+                    val enCell = row.getCell(2)
+                    val keyCell = row.getCell(3)
 
                     val chinese = getCellValueAsString(chineseCell)
                     val translation = getCellValueAsString(translationCell)
+                    val key = getCellValueAsString(keyCell)
+                    val en = getCellValueAsString(enCell)
 
                     // 只添加有效的翻译（中文和翻译都不为空）
-                    if (chinese.isNotBlank() && translation.isNotBlank()) {
-                        translations[chinese] = translation
+                    if (chinese.isNotBlank() && translation.isNotBlank()&&key.isNotBlank()&&en.isNotBlank()) {
+                        translations[chinese] = key to (en to translation)
                     }
                 }
             }

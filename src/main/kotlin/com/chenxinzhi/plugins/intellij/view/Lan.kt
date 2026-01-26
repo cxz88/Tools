@@ -9,8 +9,7 @@ import androidx.compose.ui.unit.dp
 import com.chenxinzhi.plugins.intellij.language.LanguageBundle
 import com.chenxinzhi.plugins.intellij.services.TranService
 import com.chenxinzhi.plugins.intellij.services.TranslationCacheService
-import com.chenxinzhi.plugins.intellij.utils.ExcelUtils
-import com.chenxinzhi.plugins.intellij.utils.getAllModules
+import com.chenxinzhi.plugins.intellij.utils.*
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.fileChooser.FileChooserFactory
@@ -25,7 +24,6 @@ import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
-import com.chenxinzhi.plugins.intellij.utils.localizeLiteralArgsUsingPsi
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
@@ -159,7 +157,7 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
 
     ProgressManager.getInstance().run(object : Task.Modal(
         project,
-        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} ServiceException...",
+        "${LanguageBundle.messagePointer("tran.app.scan.processing").get()} RuntimeException...",
         true
     ) {
         override fun run(p0: ProgressIndicator) {
@@ -174,7 +172,7 @@ private fun exportTranslationsToExcel(project: Project, module: Module) {
                         runReadAction {
                             JavaPsiFacade.getInstance(project)
                                 .findClass(
-                                    "org.springblade.core.log.exception.ServiceException",
+                                    "java.lang.RuntimeException",
                                     GlobalSearchScope.allScope(project)
                                 )
                         }
@@ -244,7 +242,7 @@ private fun importTranslationsFromExcel(project: Project, fallBack: () -> Unit) 
             val translations = ExcelUtils.importFromExcel(selectedFile)
 
             if (translations.isEmpty()) {
-//                project.notifyInfo("未找到有效的翻译内容")
+                project.notifyError("未找到有效的翻译内容")
                 return
             }
 
@@ -253,9 +251,9 @@ private fun importTranslationsFromExcel(project: Project, fallBack: () -> Unit) 
             cacheService.clear() // 清空之前的缓存
             cacheService.addTranslations(translations)
             fallBack()
-//            project.notifyInfo("成功导入 ${translations.size} 条翻译内容")
+            project.notifySuccess("成功导入 ${translations.size} 条翻译内容")
         } catch (e: Exception) {
-//            project.notifyInfo("导入失败: ${e.message}")
+            project.notifyError("导入失败: ${e.message}")
             e.printStackTrace()
         }
     }
