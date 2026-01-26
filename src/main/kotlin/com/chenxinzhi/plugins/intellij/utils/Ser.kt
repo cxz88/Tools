@@ -55,7 +55,8 @@ fun localizeLiteralArgsUsingPsi(
                 val search = ClassInheritorsSearch.search(psiClass, GlobalSearchScope.allScope(project), true)
                 val allSubClasses: MutableCollection<PsiClass?> = search.findAll()
                 allSubClasses.flatMap {
-                    ReferencesSearch.search(psiClass, GlobalSearchScope.moduleScope(module)).findAll()
+                    it?.let { element -> ReferencesSearch.search(element, GlobalSearchScope.moduleScope(module)) }
+                        ?.findAll() ?: emptyList()
                 }
 
 
